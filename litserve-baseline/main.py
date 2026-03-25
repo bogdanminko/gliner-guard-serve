@@ -57,5 +57,6 @@ if __name__ == "__main__":
                           timeout=30, 
                           workers_per_device=4,
                           fast_queue=True,
+                          
                           )
-    server.run(port=8000)
+    server.run(port=8000, generate_client_file=False)
