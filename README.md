@@ -30,4 +30,7 @@ Cгенерированы скриптом `scripts/generate_data.py`
 | benchmark | RPS | P50 (ms) | P95 (ms) |
 |-----------|----:|--------:|---------:|
 | litserve-baseline | 148.2 | 570 | 1500 |
+| litserve-onnx-cuda-fp16 | 170.6 | 540 | 870 |
+| litserve-onnx-trt-fp16 | 193.6 | 480 | 750 |
+| onnx-int8-m4max-cpu | 16.7 | 1100 | 2500 |
 <!-- BENCH:END -->
