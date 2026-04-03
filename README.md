@@ -1,9 +1,7 @@
 # Gliner Guard Serve
 
 ## Тестовые данные
-Cгенерированы скриптом `scripts/generate_data.py`
-
-Создаёт `prompts.csv` (`user_msg`) и `responses.csv` (`assistant_msg`) — по 500 строк синтетического текста с шумом. Длина 128–512 слов, среднее ~320.
+Лежат в директории :`test-script` в файлах `prompts.csv` (`user_msg`) и `responses.csv` (`assistant_msg`) — по 500 строк синтетического текста с шумом. Длина 128–512 слов, среднее ~320.
 
 ### Статистика по словам
 
@@ -27,10 +25,12 @@ Cгенерированы скриптом `scripts/generate_data.py`
 считывая `.csv` файлы из директории `results`
 
 <!-- BENCH:START -->
-| benchmark | RPS | P50 (ms) | P95 (ms) |
-|-----------|----:|--------:|---------:|
-| litserve-baseline | 148.2 | 570 | 1500 |
-| litserve-onnx-cuda-fp16 | 170.6 | 540 | 870 |
-| litserve-onnx-trt-fp16 | 193.6 | 480 | 750 |
-| onnx-int8-m4max-cpu | 16.7 | 1100 | 2500 |
+| Model            | Serving  | Runtime        |     RPS | P50 (ms) | P95 (ms) | P99 (ms) | Err rate (%) |
+| ---------------- | -------- | -------------- | ------: | -------: | -------: | -------: | -------: |
+| gliner-guard-uni | litserve | pytorch-fp16   |   148.2 |      570 |     1500 |     1700 |     0.00 |
+|                  |          | onnx-cuda-fp16 |   170.6 |      540 |      870 |     1000 |     0.00 |
+|                  |          | onnx-trt-fp16  | **193.6** |  **480** |  **750** |  **900** |     0.00 |
+| gliner2-multi    | litserve | pytorch-fp16   |    83.7 |     1200 |     2000 |     2400 |    12.95 |
+|                  |          | onnx-cuda-fp16 |    90.8 |     1000 |     1700 |     2100 |     0.00 |
+|                  |          | onnx-trt-fp16  |   122.6 |      740 |     1200 |     1400 |     0.00 |
 <!-- BENCH:END -->
