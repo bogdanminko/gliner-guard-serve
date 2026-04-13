@@ -14,6 +14,7 @@ Request format (online POST /pooling):
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any, Dict
@@ -22,6 +23,8 @@ from transformers import AutoTokenizer
 from vllm.config import VllmConfig
 
 from plugins.deberta_gliner2.processor import (
+    build_special_token_ids,
+    build_tokenization_cache,
     decode_output,
     format_results,
     normalize_gliner2_schema,
@@ -52,6 +55,8 @@ class ModernBertGLiNER2IOProcessor(FactoryIOProcessor):
         → factory_post_process → structured extraction results
     """
 
+    pooling_task = "plugin"
+
     def __init__(self, vllm_config: VllmConfig, *args, **kwargs):
         super().__init__(vllm_config, *args, **kwargs)
         from plugins.deberta_gliner_linker.vllm_pooling_attention_mask import (
@@ -61,11 +66,15 @@ class ModernBertGLiNER2IOProcessor(FactoryIOProcessor):
         apply_pooling_attention_mask_patch()
 
         model_id = vllm_config.model_config.model
+        self._max_model_len = getattr(vllm_config.model_config, "max_model_len", None)
         self._tokenizer = AutoTokenizer.from_pretrained(
             model_id,
             use_fast=True,
             trust_remote_code=True,
         )
+        self._tokenization_cache = build_tokenization_cache(self._tokenizer)
+        self._special_token_ids = build_special_token_ids(self._tokenizer)
+        self._schema_preprocess_cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
 
     @staticmethod
     def _coerce_bool(value: Any, field_name: str) -> bool:
@@ -129,12 +138,19 @@ class ModernBertGLiNER2IOProcessor(FactoryIOProcessor):
             text=parsed_input.text,
             schema=parsed_input.schema,
             token_pooling=getattr(self, "_token_pooling", "first"),
+            max_model_len=self._max_model_len,
+            special_token_ids=self._special_token_ids or None,
+            tokenization_cache=self._tokenization_cache,
+            schema_cache=self._schema_preprocess_cache,
         )
 
         input_ids = result["input_ids"]
         gliner_data = {
             "input_ids": input_ids,
             "mapped_indices": result["mapped_indices"],
+            "special_token_ids": result["special_token_ids"],
+            "token_pooling": result["token_pooling"],
+            "schema_dict": result["schema_dict"],
             "schema_tokens_list": result["schema_tokens_list"],
             "task_types": result["task_types"],
             "text_tokens": result["text_tokens"],
@@ -154,6 +170,7 @@ class ModernBertGLiNER2IOProcessor(FactoryIOProcessor):
             "original_text": result["original_text"],
             "start_mapping": result["start_mapping"],
             "end_mapping": result["end_mapping"],
+            "threshold": parsed_input.threshold,
             "include_confidence": parsed_input.include_confidence,
             "include_spans": parsed_input.include_spans,
             "raw_schema": getattr(parsed_input, "raw_schema", parsed_input.schema),
@@ -184,6 +201,7 @@ class ModernBertGLiNER2IOProcessor(FactoryIOProcessor):
 
         return format_results(
             results,
+            threshold=request_meta.get("threshold", 0.5),
             include_confidence=request_meta.get("include_confidence", False),
             include_spans=request_meta.get("include_spans", False),
         )
