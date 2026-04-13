@@ -1,0 +1,46 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.so
+.venv/
+.venv-*/
+venv/
+.env
+*.pt
+*.bin
+*.safetensors
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.log
+
+# Auto-generated model cache dirs
+_model_cache/
+
+# Dev artifacts (created by scripts, not committed)
+check_*.py
+debug_*.py
+
+# Bench: exclude results, server logs, and chart archive
+bench/results/
+bench/results_*/
+bench/charts/archive/
+
+# Internal benchmark results and old benchmark scripts
+benchmarks/
+
+# Internal docs (audits, integration guides, validation matrices)
+docs/AUDIT_*.md
+docs/GLINKER_*.md
+docs/io_processor_*.md
+
+# Internal scripts (reference generation, parity orchestrators, GLiNER helpers)
+scripts/
+tests/

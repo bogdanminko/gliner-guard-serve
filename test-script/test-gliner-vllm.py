@@ -1,12 +1,12 @@
 """
-Locust test for GLiNER Guard via vLLM (vllm-factory deberta_gliner2 plugin).
+Locust test for GLiNER Guard via vLLM (vllm-factory mmbert_gliner2 plugin).
 
 Uses the same test data (prompts.csv / responses.csv) as the LitServe tests,
-but targets vLLM's /pooling endpoint with the deberta_gliner2 schema format.
+but targets vLLM's /pooling endpoint with the GLiNER2 schema format.
 
 Usage:
     GLINER_HOST=http://localhost:8000 \
-    uv run locust -f test-gliner-vllm.py -u 100 -r 1 --run-time 15m --csv=vllm-stats
+    locust -f test-gliner-vllm.py -u 100 -r 1 --run-time 15m --csv=vllm-stats
 """
 
 import os

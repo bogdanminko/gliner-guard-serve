@@ -8,7 +8,7 @@
 #
 # Environment variables:
 #   GLINER_MODEL_ID    HuggingFace model ID (default: hivetrace/gliner-guard-uniencoder)
-#   GLINER_PLUGIN      vllm-factory plugin  (default: deberta_gliner2)
+#   GLINER_PLUGIN      vllm-factory plugin  (default: mmbert_gliner2)
 #   GLINER_PREPARED    prepared model dir   (default: /tmp/gliner-guard-uni-vllm)
 #   VLLM_PORT          server port          (default: 8000)
 #   VLLM_DTYPE         dtype                (default: bfloat16)
