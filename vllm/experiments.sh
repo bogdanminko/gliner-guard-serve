@@ -154,6 +154,7 @@ run_experiment() {
         -r $LOCUST_SPAWN_RATE \
         --run-time $LOCUST_RUNTIME \
         --csv="${csv_prefix}" \
+        --html="${csv_prefix}.html" \
         --csv-full-history \
         2>&1 | tee "${results_dir}/${name}-locust.log"
     cd "$SCRIPT_DIR"
