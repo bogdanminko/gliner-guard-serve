@@ -51,9 +51,6 @@ EXPERIMENTS[float16-cudagraph]="--dtype float16"
 # 5. Larger batch token budget
 EXPERIMENTS[bfloat16-eager-batch16k]="--dtype bfloat16 --enforce-eager --max-num-batched-tokens 16384"
 
-# 6. Smaller batch token budget (more responsive latency)
-EXPERIMENTS[bfloat16-eager-batch4k]="--dtype bfloat16 --enforce-eager --max-num-batched-tokens 4096"
-
 # 7. Higher GPU memory utilization
 EXPERIMENTS[bfloat16-eager-mem90]="--dtype bfloat16 --enforce-eager --gpu-memory-utilization 0.90"
 
@@ -63,7 +60,6 @@ EXPERIMENT_ORDER=(
     bfloat16-cudagraph
     float16-cudagraph
     bfloat16-eager-batch16k
-    bfloat16-eager-batch4k
     bfloat16-eager-mem90
 )
 
