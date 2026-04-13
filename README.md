@@ -17,6 +17,14 @@
 | prompts.csv | 500 | 914 | 4 152 | 2 521 | 2 472 | 702 |
 | responses.csv | 500 | 949 | 4 139 | 2 534 | 2 507 | 737 |
 
+## Методы инференса
+
+| Метод | Описание | Документация |
+|---|---|---|
+| LitServe + PyTorch fp16 | Базовый вариант, dynamic batching | [docs/litserve-baseline.md](docs/litserve-baseline.md) |
+| LitServe + ONNX/TRT | ONNX Runtime + TensorRT | [docs/onnx-trt.md](docs/onnx-trt.md) |
+| vLLM + vllm-factory | Continuous batching через vLLM | [docs/vllm.md](docs/vllm.md) |
+
 ## Benchmarks
 
 Пайплайн бенчмаркинга, настройка стенда и инструкция по тестированию — [docs/instruction.md](docs/instruction.md).

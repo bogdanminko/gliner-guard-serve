@@ -6,7 +6,14 @@ import glob
 import os
 import sys
 
-RUNTIME_ORDER = ["pytorch", "pytorch-fp16", "onnx-cuda-fp16", "onnx-trt-fp16", "onnx-int8-cpu"]
+RUNTIME_ORDER = [
+    "pytorch", "pytorch-fp16",
+    "onnx-cuda-fp16", "onnx-trt-fp16", "onnx-int8-cpu",
+    "bfloat16-eager", "float16-eager",
+    "bfloat16-cudagraph", "float16-cudagraph",
+    "bfloat16-eager-batch16k", "bfloat16-eager-batch4k",
+    "bfloat16-eager-mem90",
+]
 
 
 def runtime_key(r):

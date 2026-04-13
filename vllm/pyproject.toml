@@ -1,0 +1,10 @@
+[project]
+name = "vllm-gliner-guard"
+version = "0.1.0"
+description = "vLLM inference for GLiNER Guard models via vllm-factory"
+requires-python = ">=3.11"
+dependencies = [
+    "python-dotenv>=1.0.0",
+    "aiohttp>=3.9",
+    "requests>=2.31",
+]
