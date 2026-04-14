@@ -20,7 +20,8 @@ class GLiNERGuardAPI(ls.LitAPI):
     def setup(self, device):
         model_name = os.getenv("TORCH_MODEL_NAME", "hivetrace/gliner-guard-uniencoder")
         self.model = GLiNER2.from_pretrained(model_name)
-        self.model.to(device).to(torch.float16)
+        dtype = getattr(torch, os.getenv("TORCH_DTYPE", "float16"))
+        self.model.to(device).to(dtype)
         self.schema = (
             self.model.create_schema()
             .entities(entity_types=PII_LABELS, threshold=0.4)

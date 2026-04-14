@@ -25,6 +25,23 @@ wget "https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3/flas
 uv pip install flash_attn-2.8.3+cu12torch2.8cxx11abiTRUE-cp313-cp313-linux_x86_64.whl
 uv run main.py
 ```
+Если вы все сделали правильно, то далее во время запуска вы можете увидеть следующее предупреждение:
+```sh
+Flash Attention 2 only supports torch.float16 and torch.bfloat16 dtypes, but the current dype in ModernBertModel is torch.float32. You should run training or inference using Automatic Mixed-Precision via the `with torch.autocast(device_type='torch_device'):` decorator, or load the model with the `dtype` argument. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="flash_attention_2", dtype=torch.float16)`
+```
+Все ок - это предупреждение от Flash Attn, подождите немного, а затем появится следующий лог:
+
+```
+============================================================
+🧠 Model Configuration
+============================================================
+Encoder model      : bogdanminko/mmBERT-small
+Counting layer     : count_lstm_v2
+Token pooling      : first
+Attention backend  : 'flash_attention_2'
+Encoder dtype      : torch.float16
+```
+Это значит что все запустилось и dtype правильный
 
 Сервер стартует на `http://localhost:8000`.
 
