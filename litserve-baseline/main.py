@@ -18,7 +18,7 @@ class GuardRequest(BaseModel):
 
 class GLiNERGuardAPI(ls.LitAPI):
     def setup(self, device):
-        model_name = os.getenv("TORCH_MODEL_NAME", "hivetrace/gliner-guard-uniencoder-onnx")
+        model_name = os.getenv("TORCH_MODEL_NAME", "hivetrace/gliner-guard-uniencoder")
         self.model = GLiNER2.from_pretrained(model_name)
         self.model.to(device).to(torch.float16)
         self.schema = (
