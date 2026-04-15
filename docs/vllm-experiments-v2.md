@@ -200,8 +200,8 @@ python -m locust \
 ```bash
 # На GPU pod
 ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519  # если ещё нет
-ssh-copy-id root@<CPU_POD_IP>
-ssh root@<CPU_POD_IP> echo "SSH OK"
+ssh-copy-id -p <CPU_SSH_PORT> root@<CPU_PUBLIC_IP>
+ssh -p <CPU_SSH_PORT> root@<CPU_PUBLIC_IP> echo "SSH OK"
 ```
 
 Запуск:
@@ -209,7 +209,8 @@ ssh root@<CPU_POD_IP> echo "SSH OK"
 ```bash
 cd gliner-guard-serve/vllm
 
-LOCUST_SSH=root@<CPU_POD_IP> \
+LOCUST_SSH=root@<CPU_PUBLIC_IP> \
+LOCUST_SSH_PORT=<CPU_SSH_PORT> \
 GPU_POD_HOST=<GPU_POD_ID>.runpod.internal \
 REMOTE_TEST_DIR=~/gliner-guard-serve/test-script \
 ./experiments.sh
@@ -226,7 +227,8 @@ REMOTE_TEST_DIR=~/gliner-guard-serve/test-script \
 Один конкретный эксперимент:
 
 ```bash
-LOCUST_SSH=root@<CPU_POD_IP> \
+LOCUST_SSH=root@<CPU_PUBLIC_IP> \
+LOCUST_SSH_PORT=<CPU_SSH_PORT> \
 GPU_POD_HOST=<GPU_POD_ID>.runpod.internal \
 ./experiments.sh sched-balanced
 ```

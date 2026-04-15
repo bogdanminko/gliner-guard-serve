@@ -16,6 +16,7 @@
 # Environment variables (Locust — remote CPU pod):
 #   LOCUST_SSH        SSH target for remote Locust (e.g. root@10.0.0.5)
 #                     If unset, Locust runs locally on the same machine.
+#   LOCUST_SSH_PORT   Optional SSH port for remote Locust / scp.
 #   GPU_POD_HOST      GPU pod host as seen from CPU pod. Preferred:
 #                     <GPU_POD_ID>.runpod.internal with Global Networking.
 #   GPU_POD_IP        Deprecated fallback for old setups without internal DNS.
@@ -42,6 +43,7 @@ HEALTH_TIMEOUT=300
 WARMUP_SECS=30
 
 LOCUST_SSH="${LOCUST_SSH:-}"
+LOCUST_SSH_PORT="${LOCUST_SSH_PORT:-}"
 GPU_POD_HOST="${GPU_POD_HOST:-}"
 GPU_POD_IP="${GPU_POD_IP:-}"
 REMOTE_TEST_DIR="${REMOTE_TEST_DIR:-~/gliner-guard-serve/test-script}"
@@ -126,19 +128,29 @@ run_locust() {
     local results_dir=$3
     local host="http://localhost:${PORT}"
     local target_host="${GPU_POD_HOST:-$GPU_POD_IP}"
+    local -a ssh_cmd=(ssh)
+    local -a scp_cmd=(scp)
 
     if [ -n "$LOCUST_SSH" ]; then
         if [ -z "$target_host" ]; then
             echo "  ERROR: GPU_POD_HOST (preferred) or GPU_POD_IP must be set when LOCUST_SSH is used."
             return 1
         fi
+        if [[ "$LOCUST_SSH" == *"<"* || "$LOCUST_SSH" == *">"* ]]; then
+            echo "  ERROR: LOCUST_SSH still contains a placeholder: ${LOCUST_SSH}"
+            return 1
+        fi
+        if [ -n "$LOCUST_SSH_PORT" ]; then
+            ssh_cmd+=(-p "$LOCUST_SSH_PORT")
+            scp_cmd+=(-P "$LOCUST_SSH_PORT")
+        fi
         host="http://${target_host}:${PORT}"
-        echo "  Running Locust remotely on ${LOCUST_SSH} → ${host}..."
+        echo "  Running Locust remotely on ${LOCUST_SSH}${LOCUST_SSH_PORT:+:${LOCUST_SSH_PORT}} → ${host}..."
 
-        ssh "$LOCUST_SSH" "rm -f /tmp/${name}_stats.csv /tmp/${name}_stats_history.csv \
+        "${ssh_cmd[@]}" "$LOCUST_SSH" "rm -f /tmp/${name}_stats.csv /tmp/${name}_stats_history.csv \
             /tmp/${name}_failures.csv /tmp/${name}_exceptions.csv /tmp/${name}.html"
 
-        ssh "$LOCUST_SSH" "cd ${REMOTE_TEST_DIR} && \
+        "${ssh_cmd[@]}" "$LOCUST_SSH" "cd ${REMOTE_TEST_DIR} && \
             GLINER_HOST=${host} \
             python -m locust \
                 -f test-gliner-vllm.py \
@@ -152,11 +164,11 @@ run_locust() {
             2>&1 | tee "${results_dir}/${name}-locust.log"
 
         echo "  Copying results from CPU pod..."
-        scp "${LOCUST_SSH}:/tmp/${name}_stats.csv"         "${csv_prefix}_stats.csv"         2>/dev/null || true
-        scp "${LOCUST_SSH}:/tmp/${name}_stats_history.csv"  "${csv_prefix}_stats_history.csv"  2>/dev/null || true
-        scp "${LOCUST_SSH}:/tmp/${name}_failures.csv"       "${csv_prefix}_failures.csv"       2>/dev/null || true
-        scp "${LOCUST_SSH}:/tmp/${name}_exceptions.csv"     "${csv_prefix}_exceptions.csv"     2>/dev/null || true
-        scp "${LOCUST_SSH}:/tmp/${name}.html"               "${csv_prefix}.html"               2>/dev/null || true
+        "${scp_cmd[@]}" "${LOCUST_SSH}:/tmp/${name}_stats.csv"         "${csv_prefix}_stats.csv"         2>/dev/null || true
+        "${scp_cmd[@]}" "${LOCUST_SSH}:/tmp/${name}_stats_history.csv"  "${csv_prefix}_stats_history.csv"  2>/dev/null || true
+        "${scp_cmd[@]}" "${LOCUST_SSH}:/tmp/${name}_failures.csv"       "${csv_prefix}_failures.csv"       2>/dev/null || true
+        "${scp_cmd[@]}" "${LOCUST_SSH}:/tmp/${name}_exceptions.csv"     "${csv_prefix}_exceptions.csv"     2>/dev/null || true
+        "${scp_cmd[@]}" "${LOCUST_SSH}:/tmp/${name}.html"               "${csv_prefix}.html"               2>/dev/null || true
     else
         echo "  Running Locust locally → ${host}..."
         cd "$TEST_SCRIPT_DIR"
@@ -183,7 +195,7 @@ start_server() {
 
     if [ "$instances" -gt 1 ]; then
         local bs=${BATCH_SIZE[$name]:-64}
-        echo "  Starting vllm-factory-serve (${instances} instances, max-batch-size=${bs})..."
+        echo "  Starting vllm-factory-serve (${instances} instances, max-batch-size=${bs})..." >&2
         vllm-factory-serve "${PREPARED_DIR}" \
             --num-instances "$instances" \
             --max-batch-size "$bs" \
@@ -193,7 +205,7 @@ start_server() {
             -- --runner pooling --no-enable-prefix-caching --no-enable-chunked-prefill \
             > "$server_log" 2>&1 &
     else
-        echo "  Starting vLLM server (single instance)..."
+        echo "  Starting vLLM server (single instance)..." >&2
         vllm serve "${PREPARED_DIR}" \
             --runner pooling \
             --trust-remote-code \
