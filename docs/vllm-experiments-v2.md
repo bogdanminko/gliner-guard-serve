@@ -70,7 +70,7 @@ hostname -I | awk '{print $1}'
 
 ### 1. Создать CPU pod в RunPod
 
-- Template: любой с Python 3.11+
+- Template: любой с Python 3.8+ для `Locust`, Python 3.11+ не обязателен
 - GPU: не нужен (CPU only, 8 vCPU достаточно)
 - Убедиться, что pod в той же сети (тот же region, community/secure cloud), чтобы internal IP был доступен
 
@@ -87,6 +87,8 @@ git clone -b feature/vllm_inference https://github.com/Reterno12/gliner-guard-se
 cd gliner-guard-serve/vllm
 ./setup.sh --no-vllm
 ```
+
+Это ставит только зависимости для `Locust` и не тянет `vllm` / `vllm-factory`, поэтому подходит для CPU-only pod.
 
 ### 4. Проверить сетевую связность с GPU pod
 

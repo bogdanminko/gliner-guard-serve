@@ -227,6 +227,13 @@ cd gliner-guard-serve/vllm
 ./setup.sh
 ```
 
+Для отдельного CPU pod с одним `Locust` используйте:
+
+```bash
+cd gliner-guard-serve/vllm
+./setup.sh --no-vllm
+```
+
 ### 3. Проверка: одиночный запрос
 
 ```bash
