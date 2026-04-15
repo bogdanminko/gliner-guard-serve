@@ -8,7 +8,7 @@
 Базовый host GPU pod в примерах:
 
 ```text
-4yxe8el1eb85wl.runpod.internal
+<POD_ID>.runpod.internal
 ```
 
 Если GPU pod менялся, подставь свой актуальный `POD_ID.runpod.internal`.
@@ -44,7 +44,7 @@
 ```bash
 cd ~/gliner-guard-serve/test-script
 
-GLINER_HOST=http://4yxe8el1eb85wl.runpod.internal:8000 \
+GLINER_HOST=http://<POD_ID>.runpod.internal:8000 \
 python -m locust \
   -f test-gliner-vllm.py \
   --headless \
@@ -110,7 +110,7 @@ vllm serve /tmp/gliner-guard-uni-vllm \
 ```bash
 cd ~/gliner-guard-serve/test-script
 
-GLINER_HOST=http://4yxe8el1eb85wl.runpod.internal:8000 \
+GLINER_HOST=http://<POD_ID>.runpod.internal:8000 \
 python -m locust \
   -f test-gliner-vllm.py \
   --headless \
@@ -152,7 +152,7 @@ vllm serve /tmp/gliner-guard-uni-vllm \
 ```bash
 cd ~/gliner-guard-serve/test-script
 
-GLINER_HOST=http://4yxe8el1eb85wl.runpod.internal:8000 \
+GLINER_HOST=http://<POD_ID>.runpod.internal:8000 \
 python -m locust \
   -f test-gliner-vllm.py \
   --headless \
@@ -194,7 +194,7 @@ vllm serve /tmp/gliner-guard-uni-vllm \
 ```bash
 cd ~/gliner-guard-serve/test-script
 
-GLINER_HOST=http://4yxe8el1eb85wl.runpod.internal:8000 \
+GLINER_HOST=http://<POD_ID>.runpod.internal:8000 \
 python -m locust \
   -f test-gliner-vllm.py \
   --headless \
@@ -237,7 +237,7 @@ vllm serve /tmp/gliner-guard-uni-vllm \
 ```bash
 cd ~/gliner-guard-serve/test-script
 
-GLINER_HOST=http://4yxe8el1eb85wl.runpod.internal:8000 \
+GLINER_HOST=http://<POD_ID>.runpod.internal:8000 \
 python -m locust \
   -f test-gliner-vllm.py \
   --headless \
@@ -283,7 +283,7 @@ vllm-factory-serve /tmp/gliner-guard-uni-vllm \
 ```bash
 cd ~/gliner-guard-serve/test-script
 
-GLINER_HOST=http://4yxe8el1eb85wl.runpod.internal:8000 \
+GLINER_HOST=http://<POD_ID>.runpod.internal:8000 \
 python -m locust \
   -f test-gliner-vllm.py \
   --headless \
