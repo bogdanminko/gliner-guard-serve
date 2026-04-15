@@ -76,11 +76,17 @@ uv run locust -f test-gliner-vllm.py -u 100 -r 1 --run-time 15m --csv=vllm-bfloa
 ### Автоматический прогон всех конфигураций
 
 ```bash
-cd vllm && ./experiments.sh
+cd vllm
+
+# Локально (Locust на той же машине)
+./experiments.sh
+
+# Удалённо (Locust на отдельном CPU pod)
+LOCUST_SSH=root@<CPU_POD_IP> GPU_POD_IP=<GPU_POD_IP> ./experiments.sh
 ```
 
 Результаты сохраняются в `results/vllm/gliner-guard-uni/`.
-Подробности — [docs/vllm.md](vllm.md).
+Подробности — [docs/vllm.md](vllm.md), [docs/vllm-experiments-v2.md](vllm-experiments-v2.md).
 
 ## Документация метода инференса
 

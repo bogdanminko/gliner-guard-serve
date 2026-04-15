@@ -123,29 +123,45 @@ uv run locust -f test-gliner-vllm.py -u 100 -r 1 --run-time 15m --csv=vllm-stats
 
 ## Матрица экспериментов
 
-Скрипт `vllm/experiments.sh` запускает серию экспериментов с разными конфигурациями:
+### v1: dtype + CUDA graphs (завершена)
 
 | Эксперимент | Описание |
 |---|---|
 | `bfloat16-eager` | Базовый: bfloat16 + eager mode (без CUDA graphs) |
 | `float16-eager` | float16 + eager mode |
-| `bfloat16-cudagraph` | bfloat16 + CUDA graphs (потенциал для малых батчей) |
+| `bfloat16-cudagraph` | bfloat16 + CUDA graphs |
 | `float16-cudagraph` | float16 + CUDA graphs |
 | `bfloat16-eager-batch16k` | bfloat16 + увеличенный бюджет токенов (16384) |
-| `bfloat16-eager-batch4k` | bfloat16 + уменьшенный бюджет токенов (4096, меньше латенси) |
 | `bfloat16-eager-mem90` | bfloat16 + 90% GPU memory |
 
-### Запуск всех экспериментов
+### v2: scheduler tuning + multi-instance (текущая)
+
+| Эксперимент | Instances | max-model-len | max-num-seqs | max-num-batched-tokens |
+|---|:---:|---:|---:|---:|
+| `sched-safe` | 1 | 8192 | 64 | 16384 |
+| `sched-balanced` | 1 | 8192 | 128 | 32768 |
+| `sched-aggressive` | 1 | 8192 | 256 | 65536 |
+| `sched-short` | 1 | 4096 | 256 | 65536 |
+| `multi-4x` | 4 | 8192 | 64/inst | 32768 |
+
+Подробности по запуску v2 — [docs/vllm-experiments-v2.md](vllm-experiments-v2.md).
+
+### Запуск
 
 ```bash
 cd vllm
+
+# Все эксперименты
 ./experiments.sh
-```
 
-### Запуск одного эксперимента
+# Один конкретный
+./experiments.sh sched-balanced
 
-```bash
-./experiments.sh bfloat16-eager
+# С удалённым Locust на CPU pod
+LOCUST_SSH=root@<CPU_POD_IP> GPU_POD_IP=<GPU_POD_IP> ./experiments.sh
+
+# Список доступных
+./experiments.sh --list
 ```
 
 ### Результаты
@@ -154,10 +170,12 @@ cd vllm
 
 ```
 results/vllm/gliner-guard-uni/
-├── bfloat16-eager_stats.csv        # Locust stats
-├── bfloat16-eager-server.log       # vLLM server log
-├── bfloat16-eager-locust.log       # Locust output
-├── float16-eager_stats.csv
+├── sched-safe_stats.csv            # Locust stats
+├── sched-safe_stats_history.csv    # Per-second history
+├── sched-safe-server.log           # vLLM server log
+├── sched-safe-locust.log           # Locust output
+├── sched-balanced_stats.csv
+├── multi-4x_stats.csv
 └── ...
 ```
 
@@ -240,28 +258,33 @@ curl -s http://localhost:8000/pooling \
 ### 4. Полный прогон экспериментов
 
 ```bash
-# Все 7 конфигураций (bfloat16-eager, float16-eager, CUDA graphs, и т.д.)
+# Локально (Locust на той же машине)
 ./experiments.sh
 
-# Или один конкретный эксперимент
-./experiments.sh bfloat16-eager
+# С удалённым Locust на CPU pod
+LOCUST_SSH=root@<CPU_POD_IP> GPU_POD_IP=<GPU_POD_IP> ./experiments.sh
+
+# Один конкретный эксперимент
+./experiments.sh sched-balanced
 ```
 
 Каждый эксперимент:
 1. Запускает vLLM сервер с заданными параметрами
 2. Ждёт health-check + warmup (30 сек)
-3. Запускает Locust (100 пользователей, 15 мин)
+3. Запускает Locust (100 пользователей, 15 мин) — локально или через SSH на CPU pod
 4. Сохраняет результаты и убивает сервер
+
+Подробная инструкция для двух-подового стенда: [docs/vllm-experiments-v2.md](vllm-experiments-v2.md).
 
 ### 5. Результаты
 
 ```
 results/vllm/gliner-guard-uni/
-├── bfloat16-eager_stats.csv         # Сводная статистика Locust
-├── bfloat16-eager_stats_history.csv # Посекундная история
-├── bfloat16-eager-server.log        # Логи vLLM
-├── bfloat16-eager-locust.log        # Логи Locust
-├── float16-eager_stats.csv
+├── sched-safe_stats.csv             # Сводная статистика Locust
+├── sched-safe_stats_history.csv     # Посекундная история
+├── sched-safe-server.log            # Логи vLLM
+├── sched-safe-locust.log            # Логи Locust
+├── sched-balanced_stats.csv
 └── ...
 ```
 
