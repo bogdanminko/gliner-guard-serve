@@ -69,7 +69,7 @@ cd vllm && ./serve.sh
 
 # 2. На клиентской машине — запустить Locust
 cd test-script
-GLINER_HOST=http://<server-ip>:8000 \
+GLINER_HOST=http://<server-host>:8000 \
 uv run locust -f test-gliner-vllm.py -u 100 -r 1 --run-time 15m --csv=vllm-bfloat16-eager
 ```
 
@@ -81,8 +81,8 @@ cd vllm
 # Локально (Locust на той же машине)
 ./experiments.sh
 
-# Удалённо (Locust на отдельном CPU pod)
-LOCUST_SSH=root@<CPU_POD_IP> GPU_POD_IP=<GPU_POD_IP> ./experiments.sh
+# Удалённо (Locust на отдельном CPU pod через Global Networking)
+LOCUST_SSH=root@<CPU_POD_IP> GPU_POD_HOST=<GPU_POD_ID>.runpod.internal ./experiments.sh
 ```
 
 Результаты сохраняются в `results/vllm/gliner-guard-uni/`.

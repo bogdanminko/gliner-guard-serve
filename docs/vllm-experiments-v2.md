@@ -58,13 +58,21 @@ cd gliner-guard-serve/vllm
 
 Модель сохранится в `/tmp/gliner-guard-uni-vllm`.
 
-### 4. Узнать IP GPU pod
+### 4. Узнать internal DNS GPU pod
+
+Использовать hostname вида:
+
+```text
+<GPU_POD_ID>.runpod.internal
+```
+
+Это основной адрес для CPU pod при включённом `Global Networking`.
+
+Если нужен fallback для старого стенда без internal DNS, можно взять IP:
 
 ```bash
 hostname -I | awk '{print $1}'
 ```
-
-Запомнить: это `GPU_POD_IP` для CPU pod.
 
 ## Подготовка: CPU pod
 
@@ -72,7 +80,8 @@ hostname -I | awk '{print $1}'
 
 - Template: любой с Python 3.8+ для `Locust`, Python 3.11+ не обязателен
 - GPU: не нужен (CPU only, 8 vCPU достаточно)
-- Убедиться, что pod в той же сети (тот же region, community/secure cloud), чтобы internal IP был доступен
+- Включить `Global Networking` при создании pod
+- Убедиться, что оба pod подняты в совместимом окружении RunPod
 
 ### 2. Подключение
 
@@ -93,10 +102,14 @@ cd gliner-guard-serve/vllm
 ### 4. Проверить сетевую связность с GPU pod
 
 ```bash
-curl -sf http://<GPU_POD_IP>:8000/health && echo "OK" || echo "FAIL"
+getent hosts <GPU_POD_ID>.runpod.internal
+curl --max-time 5 -sf http://<GPU_POD_ID>.runpod.internal:8000/health && echo "OK" || echo "FAIL"
 ```
 
-Если `FAIL` — проверить, что сервер запущен на GPU pod и что поды видят друг друга.
+Если `FAIL`:
+- проверить, что сервер запущен на GPU pod
+- проверить, что сервис слушает `0.0.0.0:8000`
+- проверить, что `Global Networking` включён на обоих pod
 
 ## Pre-flight: проверка перед основным прогоном
 
@@ -135,7 +148,7 @@ curl -s http://localhost:8000/pooling \
 ### Шаг 3. Проверить запрос с CPU pod
 
 ```bash
-curl -s http://<GPU_POD_IP>:8000/pooling \
+curl -s http://<GPU_POD_ID>.runpod.internal:8000/pooling \
   -H "Content-Type: application/json" \
   -d '{
     "model": "/tmp/gliner-guard-uni-vllm",
@@ -157,7 +170,7 @@ curl -s http://<GPU_POD_IP>:8000/pooling \
 
 ```bash
 cd gliner-guard-serve/test-script
-GLINER_HOST=http://<GPU_POD_IP>:8000 \
+GLINER_HOST=http://<GPU_POD_ID>.runpod.internal:8000 \
 python -m locust \
     -f test-gliner-vllm.py \
     --headless \
@@ -180,7 +193,7 @@ python -m locust \
 
 ## Запуск экспериментов
 
-### Вариант A: автоматический (с SSH между подами)
+### Вариант A: автоматический (с SSH между подами, трафик к vLLM через Global Networking)
 
 Настроить SSH-ключ GPU pod → CPU pod:
 
@@ -197,7 +210,7 @@ ssh root@<CPU_POD_IP> echo "SSH OK"
 cd gliner-guard-serve/vllm
 
 LOCUST_SSH=root@<CPU_POD_IP> \
-GPU_POD_IP=<GPU_POD_IP> \
+GPU_POD_HOST=<GPU_POD_ID>.runpod.internal \
 REMOTE_TEST_DIR=~/gliner-guard-serve/test-script \
 ./experiments.sh
 ```
@@ -214,7 +227,7 @@ REMOTE_TEST_DIR=~/gliner-guard-serve/test-script \
 
 ```bash
 LOCUST_SSH=root@<CPU_POD_IP> \
-GPU_POD_IP=<GPU_POD_IP> \
+GPU_POD_HOST=<GPU_POD_ID>.runpod.internal \
 ./experiments.sh sched-balanced
 ```
 
@@ -253,7 +266,7 @@ vllm serve /tmp/gliner-guard-uni-vllm \
 ```bash
 cd gliner-guard-serve/test-script
 
-GLINER_HOST=http://<GPU_POD_IP>:8000 \
+GLINER_HOST=http://<GPU_POD_ID>.runpod.internal:8000 \
 python -m locust \
     -f test-gliner-vllm.py \
     --headless \
@@ -313,6 +326,7 @@ scp -r <gpu-pod-ssh>:~/gliner-guard-serve/results/ ./results/
 | `Server failed to start` | `tail -50 results/vllm/gliner-guard-uni/<name>-server.log` |
 | OOM при aggressive | Уменьшить `--max-num-batched-tokens` или `--max-num-seqs` |
 | multi-4x не стартует | Проверить `vllm-factory-serve --help`, возможно нужно обновить vllm-factory |
-| Locust 0 req/s | Проверить `curl http://<GPU_POD_IP>:8000/health` с CPU pod |
-| `Connection refused` с CPU pod | Firewall, разные сети RunPod, или сервер ещё не стартовал |
+| `getent hosts <GPU_POD_ID>.runpod.internal` пустой | `Global Networking` не включён или pod пересоздан без него |
+| Locust 0 req/s | Проверить `curl http://<GPU_POD_ID>.runpod.internal:8000/health` с CPU pod |
+| `Connection refused` с CPU pod | Сервер ещё не стартовал или сервис слушает не `0.0.0.0` |
 | `SKIP: results already exist` | Удалить `results/vllm/gliner-guard-uni/<name>_stats.csv` |

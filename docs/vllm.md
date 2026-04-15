@@ -157,8 +157,8 @@ cd vllm
 # Один конкретный
 ./experiments.sh sched-balanced
 
-# С удалённым Locust на CPU pod
-LOCUST_SSH=root@<CPU_POD_IP> GPU_POD_IP=<GPU_POD_IP> ./experiments.sh
+# С удалённым Locust на CPU pod через Global Networking
+LOCUST_SSH=root@<CPU_POD_IP> GPU_POD_HOST=<GPU_POD_ID>.runpod.internal ./experiments.sh
 
 # Список доступных
 ./experiments.sh --list

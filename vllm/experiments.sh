@@ -16,7 +16,9 @@
 # Environment variables (Locust — remote CPU pod):
 #   LOCUST_SSH        SSH target for remote Locust (e.g. root@10.0.0.5)
 #                     If unset, Locust runs locally on the same machine.
-#   GPU_POD_IP        GPU pod IP as seen from CPU pod (required when LOCUST_SSH is set)
+#   GPU_POD_HOST      GPU pod host as seen from CPU pod. Preferred:
+#                     <GPU_POD_ID>.runpod.internal with Global Networking.
+#   GPU_POD_IP        Deprecated fallback for old setups without internal DNS.
 #   REMOTE_TEST_DIR   path to test-script/ on CPU pod (default: ~/gliner-guard-serve/test-script)
 #
 # Environment variables (Locust tuning):
@@ -40,6 +42,7 @@ HEALTH_TIMEOUT=300
 WARMUP_SECS=30
 
 LOCUST_SSH="${LOCUST_SSH:-}"
+GPU_POD_HOST="${GPU_POD_HOST:-}"
 GPU_POD_IP="${GPU_POD_IP:-}"
 REMOTE_TEST_DIR="${REMOTE_TEST_DIR:-~/gliner-guard-serve/test-script}"
 
@@ -122,13 +125,14 @@ run_locust() {
     local csv_prefix=$2
     local results_dir=$3
     local host="http://localhost:${PORT}"
+    local target_host="${GPU_POD_HOST:-$GPU_POD_IP}"
 
     if [ -n "$LOCUST_SSH" ]; then
-        if [ -z "$GPU_POD_IP" ]; then
-            echo "  ERROR: GPU_POD_IP must be set when LOCUST_SSH is used."
+        if [ -z "$target_host" ]; then
+            echo "  ERROR: GPU_POD_HOST (preferred) or GPU_POD_IP must be set when LOCUST_SSH is used."
             return 1
         fi
-        host="http://${GPU_POD_IP}:${PORT}"
+        host="http://${target_host}:${PORT}"
         echo "  Running Locust remotely on ${LOCUST_SSH} → ${host}..."
 
         ssh "$LOCUST_SSH" "rm -f /tmp/${name}_stats.csv /tmp/${name}_stats_history.csv \
