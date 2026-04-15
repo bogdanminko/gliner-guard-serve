@@ -3,7 +3,7 @@
 #
 # Usage:
 #   ./setup.sh           # full install (GPU machine)
-#   ./setup.sh --no-vllm # skip vLLM install (for local testing without GPU)
+#   ./setup.sh --no-vllm # skip vLLM install (CPU pod / local testing)
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -13,27 +13,44 @@ if [[ "${1:-}" == "--no-vllm" ]]; then
 fi
 
 PROJECT_ROOT="$(dirname "$(pwd)")"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+VENV_DIR="${PROJECT_ROOT}/.venv"
+
+if [[ -z "${VIRTUAL_ENV:-}" ]]; then
+    echo "=== Creating / using virtualenv: ${VENV_DIR} ==="
+    if [[ ! -d "${VENV_DIR}" ]]; then
+        "${PYTHON_BIN}" -m venv "${VENV_DIR}"
+    fi
+    export VIRTUAL_ENV="${VENV_DIR}"
+    export PATH="${VENV_DIR}/bin:${PATH}"
+    hash -r
+fi
+
+echo "=== Python environment ==="
+echo "python: $(command -v python)"
+echo "pip:    $(command -v pip)"
+python -m pip install --upgrade pip setuptools wheel
 
 echo "=== Installing vllm-factory ==="
-pip install -e "${PROJECT_ROOT}/vllm-factory[gliner]"
+python -m pip install -e "${PROJECT_ROOT}/vllm-factory[gliner]"
 
 echo ""
 echo "=== Installing experiment dependencies ==="
-pip install python-dotenv aiohttp requests
+python -m pip install python-dotenv aiohttp requests
 
 echo ""
 echo "=== Installing Locust test dependencies ==="
-pip install locust pandas python-dotenv
+python -m pip install locust pandas python-dotenv
 
 if [ "$NO_VLLM" = false ]; then
     echo ""
     echo "=== Installing vLLM (LAST — pins shared deps) ==="
-    pip install vllm
+    python -m pip install vllm
 fi
 
 echo ""
 echo "=== Done ==="
-pip show vllm-factory | head -3
+python -m pip show vllm-factory | head -3
 if [ "$NO_VLLM" = false ]; then
-    pip show vllm | head -3
+    python -m pip show vllm | head -3
 fi

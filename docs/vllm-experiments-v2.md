@@ -84,8 +84,8 @@ ssh <cpu-pod-ssh-address> -i ~/.ssh/id_ed25519
 
 ```bash
 git clone -b feature/vllm_inference https://github.com/Reterno12/gliner-guard-serve.git
-cd gliner-guard-serve/test-script
-pip install locust pandas python-dotenv
+cd gliner-guard-serve/vllm
+./setup.sh --no-vllm
 ```
 
 ### 4. Проверить сетевую связность с GPU pod
