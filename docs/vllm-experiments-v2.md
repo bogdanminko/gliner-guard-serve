@@ -21,7 +21,7 @@ Locust вынесен на отдельный CPU pod, чтобы генерац
 | `sched-short` | 1 | 4096 | 256 | 65536 | Короткие тексты: меньше model-len → больше seqs в память |
 | `multi-4x` | 4 | 8192 | 64/inst | 32768 | 4 vLLM instance за reverse proxy |
 
-Все эксперименты: `bfloat16 + enforce-eager` (eager как baseline, без CUDA graphs).
+Все эксперименты: `float16` + CUDA graphs (`--enforce-eager` не используем; это baseline).
 
 ### Что крутим
 
@@ -252,8 +252,7 @@ cd gliner-guard-serve/vllm
 vllm serve /tmp/gliner-guard-uni-vllm \
     --runner pooling \
     --trust-remote-code \
-    --dtype bfloat16 \
-    --enforce-eager \
+    --dtype float16 \
     --no-enable-prefix-caching \
     --no-enable-chunked-prefill \
     --gpu-memory-utilization 0.80 \
@@ -290,8 +289,7 @@ vllm-factory-serve /tmp/gliner-guard-uni-vllm \
     --num-instances 4 \
     --max-batch-size 64 \
     --port 8000 \
-    --dtype bfloat16 \
-    --enforce-eager \
+    --dtype float16 \
     --max-model-len 8192 \
     --max-num-batched-tokens 32768 \
     --io-processor-plugin mmbert_gliner2_io \

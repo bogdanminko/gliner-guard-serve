@@ -64,25 +64,25 @@ declare -A BATCH_SIZE
 # --- Single-instance scheduler tuning ---
 
 # 1. Safe: conservative scheduler limits
-EXPERIMENTS[sched-safe]="--dtype bfloat16 --enforce-eager --max-model-len 8192 --max-num-seqs 64 --max-num-batched-tokens 16384"
+EXPERIMENTS[sched-safe]="--dtype float16 --max-model-len 8192 --max-num-seqs 64 --max-num-batched-tokens 16384"
 INSTANCE_COUNT[sched-safe]=0
 
 # 2. Balanced: moderate concurrency
-EXPERIMENTS[sched-balanced]="--dtype bfloat16 --enforce-eager --max-model-len 8192 --max-num-seqs 128 --max-num-batched-tokens 32768"
+EXPERIMENTS[sched-balanced]="--dtype float16 --max-model-len 8192 --max-num-seqs 128 --max-num-batched-tokens 32768"
 INSTANCE_COUNT[sched-balanced]=0
 
 # 3. Aggressive: high concurrency, large token budget
-EXPERIMENTS[sched-aggressive]="--dtype bfloat16 --enforce-eager --max-model-len 8192 --max-num-seqs 256 --max-num-batched-tokens 65536"
+EXPERIMENTS[sched-aggressive]="--dtype float16 --max-model-len 8192 --max-num-seqs 256 --max-num-batched-tokens 65536"
 INSTANCE_COUNT[sched-aggressive]=0
 
 # 4. Short texts: reduced max-model-len for shorter inputs
-EXPERIMENTS[sched-short]="--dtype bfloat16 --enforce-eager --max-model-len 4096 --max-num-seqs 256 --max-num-batched-tokens 65536"
+EXPERIMENTS[sched-short]="--dtype float16 --max-model-len 4096 --max-num-seqs 256 --max-num-batched-tokens 65536"
 INSTANCE_COUNT[sched-short]=0
 
 # --- Multi-instance (vllm-factory-serve) ---
 
 # 5. 4 instances, balanced scheduler per instance
-EXPERIMENTS[multi-4x]="--dtype bfloat16 --enforce-eager --max-model-len 8192 --max-num-batched-tokens 32768"
+EXPERIMENTS[multi-4x]="--dtype float16 --max-model-len 8192 --max-num-batched-tokens 32768"
 INSTANCE_COUNT[multi-4x]=4
 BATCH_SIZE[multi-4x]=64
 
