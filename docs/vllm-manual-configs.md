@@ -13,7 +13,7 @@
 
 Если GPU pod менялся, подставь свой актуальный `POD_ID.runpod.internal`.
 
-Все конфиги ниже: `float16` + CUDA graphs. 
+Все конфиги ниже: `dtype auto` + CUDA graphs.
 
 ## Короткий ответ на главный вопрос
 
@@ -96,7 +96,7 @@ cd ~/gliner-guard-serve/vllm
 vllm serve /tmp/gliner-guard-uni-vllm \
   --runner pooling \
   --trust-remote-code \
-  --dtype float16 \
+  --dtype auto \
   --no-enable-prefix-caching \
   --no-enable-chunked-prefill \
   --gpu-memory-utilization 0.80 \
@@ -137,7 +137,7 @@ cd ~/gliner-guard-serve/vllm
 vllm serve /tmp/gliner-guard-uni-vllm \
   --runner pooling \
   --trust-remote-code \
-  --dtype float16 \
+  --dtype auto \
   --no-enable-prefix-caching \
   --no-enable-chunked-prefill \
   --gpu-memory-utilization 0.80 \
@@ -178,7 +178,7 @@ cd ~/gliner-guard-serve/vllm
 vllm serve /tmp/gliner-guard-uni-vllm \
   --runner pooling \
   --trust-remote-code \
-  --dtype float16 \
+  --dtype auto \
   --no-enable-prefix-caching \
   --no-enable-chunked-prefill \
   --gpu-memory-utilization 0.80 \
@@ -220,7 +220,7 @@ cd ~/gliner-guard-serve/vllm
 vllm serve /tmp/gliner-guard-uni-vllm \
   --runner pooling \
   --trust-remote-code \
-  --dtype float16 \
+  --dtype auto \
   --no-enable-prefix-caching \
   --no-enable-chunked-prefill \
   --gpu-memory-utilization 0.80 \
@@ -268,7 +268,7 @@ vllm-factory-serve /tmp/gliner-guard-uni-vllm \
   --num-instances 4 \
   --max-batch-size 64 \
   --port 8000 \
-  --dtype float16 \
+  --dtype auto \
   --max-model-len 8192 \
   --max-num-batched-tokens 32768 \
   --io-processor-plugin mmbert_gliner2_io \
@@ -327,7 +327,7 @@ ss -ltnp | grep ':8000'
 Для ручного прогона матрицы **не надо** использовать `./serve.sh` перед каждым конфигом.
 
 Почему:
-- `./serve.sh` запускает default single-instance baseline (`float16` + CUDA graphs)
+- `./serve.sh` запускает default single-instance baseline (`dtype auto` + CUDA graphs)
 - твои эксперименты требуют явных scheduler flags
 - эти флаги удобнее и правильнее задавать прямой командой `vllm serve` / `vllm-factory-serve`
 
