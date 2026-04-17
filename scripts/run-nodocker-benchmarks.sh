@@ -102,7 +102,7 @@ prepare_worktree() {
         git clone "${REPO_URL}" "${WORKTREE_DIR}"
     fi
 
-    if [ -n "$(git -C "${WORKTREE_DIR}" status --porcelain)" ]; then
+    if [ -n "$(git -C "${WORKTREE_DIR}" status --porcelain --untracked-files=no)" ]; then
         echo "Dirty worktree detected in ${WORKTREE_DIR}. Refusing to continue." >&2
         exit 1
     fi

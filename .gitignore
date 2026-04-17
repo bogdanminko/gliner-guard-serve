@@ -210,3 +210,5 @@ __marimo__/
 *.zip
 artifacts/raw-results/
 artifacts/logs/
+ray-serve/gliner_guard_pb2.py
+ray-serve/gliner_guard_pb2_grpc.py
