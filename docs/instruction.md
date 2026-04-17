@@ -114,6 +114,26 @@ REPEATS=1 USERS=100 DURATION=15m ./scripts/run-nodocker-benchmarks.sh
 смонтирован через `fuse`, а heavy Python/Ray/Torch окружения заметно медленнее
 стартуют с сетевой файловой системы.
 
+Для полного sweep-а dynamic batching по `B1..B8` без изменения curated README
+используйте тот же раннер в режиме `sweep`:
+
+```bash
+BENCH_MATRIX_MODE=sweep \
+BENCH_PROTOCOLS="rest grpc" \
+REPEATS=1 USERS=100 DURATION=15m \
+MODELS="uni bi" \
+DTYPES="bf16 fp16" \
+./scripts/run-nodocker-benchmarks.sh
+```
+
+Что меняется в режиме `sweep`:
+
+- прогоняются все конфиги `B1..B8` для каждого `protocol × model × dtype`
+- raw-артефакты пишутся отдельно в `artifacts/raw-results/sweep/`
+- серверные логи пишутся в `artifacts/logs/sweep/`
+- после каждого прогона обновляется `artifacts/raw-results/sweep-summary.csv`
+- `README.md` и curated layout `results/ray-serve/...` не трогаются автоматически
+
 ### Обновление таблицы в README
 
 ```bash

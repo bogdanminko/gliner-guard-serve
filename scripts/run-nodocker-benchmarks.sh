@@ -19,7 +19,10 @@ WARMUP_REQS="${WARMUP_REQS:-50}"
 DATASET="${DATASET:-prompts}"
 REPEATS="${REPEATS:-1}"
 CURATE_RUN="${CURATE_RUN:-${REPEATS}}"
-UPDATE_README="${UPDATE_README:-1}"
+BENCH_MATRIX_MODE="${BENCH_MATRIX_MODE:-default}"
+BENCH_PROTOCOLS="${BENCH_PROTOCOLS:-rest grpc}"
+SWEEP_CONFIGS="${SWEEP_CONFIGS:-B1:8:0.01 B2:8:0.05 B3:16:0.01 B4:16:0.05 B5:32:0.05 B6:32:0.10 B7:64:0.05 B8:64:0.10}"
+UPDATE_README="${UPDATE_README:-}"
 
 MODELS="${MODELS:-uni bi}"
 DTYPES="${DTYPES:-bf16 fp16}"
@@ -37,8 +40,49 @@ RAY_TMPDIR="${RAY_TMPDIR:-/tmp/ray}"
 PYTHONDONTWRITEBYTECODE="${PYTHONDONTWRITEBYTECODE:-1}"
 EXPECT_GPU="${EXPECT_GPU:-1}"
 
-RAW_RESULTS_DIR_REL="${RAW_RESULTS_DIR_REL:-artifacts/raw-results}"
-LOG_DIR_REL="${LOG_DIR_REL:-artifacts/logs}"
+RAW_RESULTS_DIR_REL="${RAW_RESULTS_DIR_REL:-}"
+LOG_DIR_REL="${LOG_DIR_REL:-}"
+SUMMARY_CSV_REL="${SUMMARY_CSV_REL:-}"
+
+case "${BENCH_MATRIX_MODE}" in
+    default|sweep) ;;
+    *)
+        echo "Unsupported BENCH_MATRIX_MODE=${BENCH_MATRIX_MODE}. Use default or sweep." >&2
+        exit 1
+        ;;
+esac
+
+if [ -z "${RAW_RESULTS_DIR_REL}" ]; then
+    if [ "${BENCH_MATRIX_MODE}" = "sweep" ]; then
+        RAW_RESULTS_DIR_REL="artifacts/raw-results/sweep"
+    else
+        RAW_RESULTS_DIR_REL="artifacts/raw-results"
+    fi
+fi
+
+if [ -z "${LOG_DIR_REL}" ]; then
+    if [ "${BENCH_MATRIX_MODE}" = "sweep" ]; then
+        LOG_DIR_REL="artifacts/logs/sweep"
+    else
+        LOG_DIR_REL="artifacts/logs"
+    fi
+fi
+
+if [ -z "${SUMMARY_CSV_REL}" ]; then
+    if [ "${BENCH_MATRIX_MODE}" = "sweep" ]; then
+        SUMMARY_CSV_REL="artifacts/raw-results/sweep-summary.csv"
+    else
+        SUMMARY_CSV_REL="artifacts/raw-results/benchmark-summary.csv"
+    fi
+fi
+
+if [ -z "${UPDATE_README}" ]; then
+    if [ "${BENCH_MATRIX_MODE}" = "sweep" ]; then
+        UPDATE_README="0"
+    else
+        UPDATE_README="1"
+    fi
+fi
 
 mkdir -p "${UV_CACHE_DIR}" "${HF_HOME}" "${RAY_TMPDIR}"
 
@@ -143,6 +187,117 @@ raw_results_dir() {
 
 log_dir() {
     printf '%s/%s' "${WORKTREE_DIR}" "${LOG_DIR_REL}"
+}
+
+summary_csv_path() {
+    printf '%s/%s' "${WORKTREE_DIR}" "${SUMMARY_CSV_REL}"
+}
+
+extract_aggregated_stats() {
+    local stats_file="$1"
+    python3 - "$stats_file" <<'PY'
+import csv
+import sys
+
+path = sys.argv[1]
+
+with open(path, newline="") as handle:
+    rows = list(csv.DictReader(handle))
+
+row = next((candidate for candidate in rows if candidate.get("Name") == "Aggregated"), None)
+if row is None:
+    raise SystemExit(1)
+
+print(
+    "|".join(
+        [
+            row.get("Request Count", ""),
+            row.get("Failure Count", ""),
+            row.get("Requests/s", ""),
+            row.get("50%", ""),
+            row.get("95%", ""),
+            row.get("99%", ""),
+        ]
+    )
+)
+PY
+}
+
+ensure_summary_header() {
+    local summary_file
+    summary_file="$(summary_csv_path)"
+    mkdir -p "$(dirname "${summary_file}")"
+
+    if [ ! -f "${summary_file}" ]; then
+        printf '%s\n' \
+            'protocol,model,dtype,config_id,batch_size,batch_timeout,run,dataset,users,spawn_rate,duration,request_count,failure_count,rps,p50_ms,p95_ms,p99_ms,stats_csv,html_report,gpu_csv,log_file' \
+            > "${summary_file}"
+    fi
+}
+
+append_summary_row() {
+    local protocol="$1"
+    local model_short="$2"
+    local dtype_tag="$3"
+    local config_id="$4"
+    local batch_size="$5"
+    local batch_timeout="$6"
+    local run_num="$7"
+    local prefix="$8"
+    local stats_file
+    local html_file
+    local gpu_file
+    local log_file
+    local summary_file
+    local stats_line
+    local request_count
+    local failure_count
+    local rps
+    local p50
+    local p95
+    local p99
+
+    stats_file="$(raw_results_dir)/${prefix}_stats.csv"
+    html_file="$(raw_results_dir)/${prefix}.html"
+    gpu_file="$(raw_results_dir)/gpu-${prefix}.csv"
+    log_file="$(log_dir)/${prefix}.log"
+
+    if [ ! -f "${stats_file}" ]; then
+        log "Missing stats file for summary append: ${stats_file}"
+        return 1
+    fi
+
+    stats_line="$(extract_aggregated_stats "${stats_file}")" || {
+        log "Failed to parse aggregated stats from ${stats_file}"
+        return 1
+    }
+    IFS='|' read -r request_count failure_count rps p50 p95 p99 <<< "${stats_line}"
+
+    ensure_summary_header
+    summary_file="$(summary_csv_path)"
+    printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+        "${protocol}" \
+        "${model_short}" \
+        "${dtype_tag}" \
+        "${config_id}" \
+        "${batch_size}" \
+        "${batch_timeout}" \
+        "${run_num}" \
+        "${DATASET}" \
+        "${USERS}" \
+        "${SPAWN_RATE}" \
+        "${DURATION}" \
+        "${request_count}" \
+        "${failure_count}" \
+        "${rps}" \
+        "${p50}" \
+        "${p95}" \
+        "${p99}" \
+        "${stats_file}" \
+        "${html_file}" \
+        "${gpu_file}" \
+        "${log_file}" \
+        >> "${summary_file}"
 }
 
 stop_ray_stack() {
@@ -287,21 +442,38 @@ start_server() {
 
 summarize_stats() {
     local stats_file="$1"
+    local stats_line
+    local request_count
+    local failure_count
+    local rps
+    local p50
+    local p95
+    local p99
+
     if [ ! -f "${stats_file}" ]; then
         log "Missing stats file: ${stats_file}"
         return 1
     fi
-    grep 'Aggregated' "${stats_file}" | awk -F',' \
-        '{printf "RPS=%.1f P50=%sms P95=%sms P99=%sms Failures=%s\n", $10, $6, $8, $9, $4}'
+
+    stats_line="$(extract_aggregated_stats "${stats_file}")" || {
+        log "Failed to parse aggregated stats from ${stats_file}"
+        return 1
+    }
+    IFS='|' read -r request_count failure_count rps p50 p95 p99 <<< "${stats_line}"
+    printf 'RPS=%.1f P50=%sms P95=%sms P99=%sms Failures=%s\n' \
+        "${rps}" "${p50}" "${p95}" "${p99}" "${failure_count}"
 }
 
 run_rest_bench() {
     local prefix="$1"
-    local model_id="$2"
-    local dtype_tag="$3"
-    local batch_size="$4"
-    local batch_timeout="$5"
-    local app_script="${6:-serve_app.py}"
+    local model_short="$2"
+    local model_id="$3"
+    local dtype_tag="$4"
+    local batch_size="$5"
+    local batch_timeout="$6"
+    local config_id="$7"
+    local run_num="$8"
+    local app_script="${9:-serve_app.py}"
     local duration_secs
     local raw_dir
     local logs_dir
@@ -348,14 +520,18 @@ run_rest_bench() {
     wait "${gpu_pid}" 2>/dev/null || true
     stop_ray_stack "${pid_file}"
     summarize_stats "${raw_dir}/${prefix}_stats.csv"
+    append_summary_row "rest" "${model_short}" "${dtype_tag}" "${config_id}" "${batch_size}" "${batch_timeout}" "${run_num}" "${prefix}"
 }
 
 run_grpc_bench() {
     local prefix="$1"
-    local model_id="$2"
-    local dtype_tag="$3"
-    local batch_size="$4"
-    local batch_timeout="$5"
+    local model_short="$2"
+    local model_id="$3"
+    local dtype_tag="$4"
+    local batch_size="$5"
+    local batch_timeout="$6"
+    local config_id="$7"
+    local run_num="$8"
     local duration_secs
     local raw_dir
     local logs_dir
@@ -407,6 +583,7 @@ run_grpc_bench() {
     wait "${gpu_pid}" 2>/dev/null || true
     stop_ray_stack "${pid_file}"
     summarize_stats "${raw_dir}/${prefix}_stats.csv"
+    append_summary_row "grpc" "${model_short}" "${dtype_tag}" "${config_id}" "${batch_size}" "${batch_timeout}" "${run_num}" "${prefix}"
 }
 
 curate_selected_run() {
@@ -443,8 +620,15 @@ main() {
     local dtype_tag
     local model_id
     local run
+    local protocol
+    local config_spec
+    local config_id
+    local batch_size
+    local batch_timeout
     local -a model_list
     local -a dtype_list
+    local -a protocol_list
+    local -a sweep_config_list
 
     export PATH="$HOME/.local/bin:$PATH"
     export UV_CACHE_DIR HF_HOME RAY_TMPDIR PYTHONDONTWRITEBYTECODE
@@ -455,35 +639,75 @@ main() {
 
     read -r -a model_list <<< "${MODELS}"
     read -r -a dtype_list <<< "${DTYPES}"
+    read -r -a protocol_list <<< "${BENCH_PROTOCOLS}"
+    read -r -a sweep_config_list <<< "${SWEEP_CONFIGS}"
 
     mkdir -p "$(raw_results_dir)" "$(log_dir)"
+    ensure_summary_header
 
     log "Starting no-Docker benchmark matrix"
+    log "Matrix mode: ${BENCH_MATRIX_MODE}"
     log "Worktree: ${WORKTREE_DIR}"
     log "Models: ${MODELS}"
     log "DTypes: ${DTYPES}"
     log "Repeats: ${REPEATS}"
     log "Dataset: ${DATASET}"
+    log "Summary CSV: $(summary_csv_path)"
+    if [ "${BENCH_MATRIX_MODE}" = "sweep" ]; then
+        log "Protocols: ${BENCH_PROTOCOLS}"
+        log "Sweep configs: ${SWEEP_CONFIGS}"
+    fi
 
     for model_short in "${model_list[@]}"; do
         model_id="$(model_id_for "${model_short}")"
         for dtype in "${dtype_list[@]}"; do
             dtype_tag="$(normalize_dtype_tag "${dtype}")"
-            for run in $(seq 1 "${REPEATS}"); do
-                run_rest_bench \
-                    "ray-rest-${dtype_tag}-nobatch-${model_short}-${DATASET}-run${run}" \
-                    "${model_id}" "${dtype_tag}" 0 "${REST_DYNBATCH_TIMEOUT}"
+            if [ "${BENCH_MATRIX_MODE}" = "sweep" ]; then
+                for config_spec in "${sweep_config_list[@]}"; do
+                    IFS=':' read -r config_id batch_size batch_timeout <<< "${config_spec}"
+                    if [ -z "${config_id}" ] || [ -z "${batch_size}" ] || [ -z "${batch_timeout}" ]; then
+                        echo "Malformed SWEEP_CONFIGS entry: ${config_spec}" >&2
+                        exit 1
+                    fi
 
-                run_rest_bench \
-                    "ray-rest-${dtype_tag}-${REST_DYNBATCH_ID}-${model_short}-${DATASET}-run${run}" \
-                    "${model_id}" "${dtype_tag}" "${REST_DYNBATCH_BATCH_SIZE}" "${REST_DYNBATCH_TIMEOUT}"
+                    for run in $(seq 1 "${REPEATS}"); do
+                        for protocol in "${protocol_list[@]}"; do
+                            case "${protocol}" in
+                                rest)
+                                    run_rest_bench \
+                                        "ray-rest-${dtype_tag}-${config_id}-${model_short}-${DATASET}-run${run}" \
+                                        "${model_short}" "${model_id}" "${dtype_tag}" "${batch_size}" "${batch_timeout}" "${config_id}" "${run}"
+                                    ;;
+                                grpc)
+                                    run_grpc_bench \
+                                        "ray-grpc-${dtype_tag}-${config_id}-${model_short}-${DATASET}-run${run}" \
+                                        "${model_short}" "${model_id}" "${dtype_tag}" "${batch_size}" "${batch_timeout}" "${config_id}" "${run}"
+                                    ;;
+                                *)
+                                    echo "Unsupported BENCH_PROTOCOLS entry: ${protocol}" >&2
+                                    exit 1
+                                    ;;
+                            esac
+                        done
+                    done
+                done
+            else
+                for run in $(seq 1 "${REPEATS}"); do
+                    run_rest_bench \
+                        "ray-rest-${dtype_tag}-nobatch-${model_short}-${DATASET}-run${run}" \
+                        "${model_short}" "${model_id}" "${dtype_tag}" 0 "${REST_DYNBATCH_TIMEOUT}" "nobatch" "${run}"
 
-                run_grpc_bench \
-                    "ray-grpc-${dtype_tag}-${GRPC_DYNBATCH_ID}-${model_short}-${DATASET}-run${run}" \
-                    "${model_id}" "${dtype_tag}" "${GRPC_DYNBATCH_BATCH_SIZE}" "${GRPC_DYNBATCH_TIMEOUT}"
-            done
+                    run_rest_bench \
+                        "ray-rest-${dtype_tag}-${REST_DYNBATCH_ID}-${model_short}-${DATASET}-run${run}" \
+                        "${model_short}" "${model_id}" "${dtype_tag}" "${REST_DYNBATCH_BATCH_SIZE}" "${REST_DYNBATCH_TIMEOUT}" "${REST_DYNBATCH_ID}" "${run}"
 
-            curate_selected_run "${model_short}" "${dtype_tag}"
+                    run_grpc_bench \
+                        "ray-grpc-${dtype_tag}-${GRPC_DYNBATCH_ID}-${model_short}-${DATASET}-run${run}" \
+                        "${model_short}" "${model_id}" "${dtype_tag}" "${GRPC_DYNBATCH_BATCH_SIZE}" "${GRPC_DYNBATCH_TIMEOUT}" "${GRPC_DYNBATCH_ID}" "${run}"
+                done
+
+                curate_selected_run "${model_short}" "${dtype_tag}"
+            fi
         done
     done
 
@@ -492,7 +716,10 @@ main() {
 
     log "Benchmarks complete."
     log "Raw artifacts: $(raw_results_dir)"
-    log "Curated results: ${WORKTREE_DIR}/results/ray-serve"
+    log "Summary CSV: $(summary_csv_path)"
+    if [ "${BENCH_MATRIX_MODE}" = "default" ]; then
+        log "Curated results: ${WORKTREE_DIR}/results/ray-serve"
+    fi
 }
 
 main "$@"
