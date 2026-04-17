@@ -5,7 +5,6 @@ import torch
 from ray import serve
 
 from gliner2 import GLiNER2
-from gliner2.inference.schema_registry import SchemaRegistry
 from runtime_config import resolve_torch_dtype
 
 logging.basicConfig(level=logging.INFO)
@@ -18,43 +17,48 @@ SCHEMA_MODE = os.environ.get("SCHEMA_MODE", "minimal")  # minimal | full
 TORCH_RUNTIME = resolve_torch_dtype()
 
 
-def _create_registry() -> SchemaRegistry:
-    """Build a SchemaRegistry based on SCHEMA_MODE env var.
+def _create_schema(model: GLiNER2) -> tuple[object, str]:
+    """Build a GLiNER2 schema based on SCHEMA_MODE.
 
     minimal (default): 4 PII entities + safety classification (6 labels)
     full: 8 PII entities + safety + adversarial + harmful + intent + tone (56 labels)
 
-    Returns a registry ready for plugin-driven label registration.
+    Returns the schema object plus a short summary for logs.
     """
-    registry = SchemaRegistry(max_labels=100)
+    schema = model.create_schema()
 
     if SCHEMA_MODE == "full":
-        registry.register_entities([
+        schema.entities([
             "person", "company", "email", "street", "phone",
             "city", "country", "date_of_birth",
         ], threshold=0.5)
-        registry.register_classification("safety", ["safe", "unsafe"])
-        registry.register_classification("adversarial", [
+        schema.classification("safety", ["safe", "unsafe"])
+        schema.classification("adversarial", [
             "none", "instruction_override", "jailbreak_persona",
             "jailbreak_hypothetical", "data_exfiltration", "jailbreak_roleplay",
         ], multi_label=True)
-        registry.register_classification("harmful", [
+        schema.classification("harmful", [
             "none", "dangerous_instructions", "harassment",
             "sexual_content", "violence", "hate_speech", "fraud",
             "pii_exposure", "discrimination", "misinformation", "weapons",
         ], multi_label=True)
-        registry.register_classification("intent", [
+        schema.classification("intent", [
             "informational", "conversational", "instructional",
             "adversarial", "creative", "threatening",
         ])
-        registry.register_classification("tone", [
+        schema.classification("tone", [
             "neutral", "aggressive", "manipulative", "formal", "distressed",
         ])
+        summary = "entities=8 classifications=5"
     else:
-        registry.register_entities(["person", "address", "email", "phone"], threshold=0.4)
-        registry.register_classification("safety", ["safe", "unsafe"])
+        schema.entities(
+            ["person", "address", "email", "phone"],
+            threshold=0.4,
+        )
+        schema.classification("safety", ["safe", "unsafe"])
+        summary = "entities=4 classifications=1"
 
-    return registry
+    return schema, summary
 
 
 def _build_deployment():
@@ -73,17 +77,16 @@ def _build_deployment():
                 self.device = "cuda" if torch.cuda.is_available() else "cpu"
                 self.model = GLiNER2.from_pretrained(MODEL_ID)
                 self.model.to(self.device).to(TORCH_RUNTIME.torch_dtype).eval()
-                registry = _create_registry()
-                self.schema = registry.build_schema(self.model)
+                self.schema, schema_summary = _create_schema(self.model)
                 logger.info(
-                    "model=%s device=%s dtype=%s schema=%s batch_size=%d timeout=%.3f registry=%s ready",
+                    "model=%s device=%s dtype=%s schema=%s batch_size=%d timeout=%.3f summary=%s ready",
                     MODEL_ID,
                     self.device,
                     TORCH_RUNTIME.name,
                     SCHEMA_MODE,
                     MAX_BATCH_SIZE,
                     BATCH_WAIT_TIMEOUT,
-                    registry.summary(),
+                    schema_summary,
                 )
 
             @serve.batch(
@@ -116,11 +119,14 @@ def _build_deployment():
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             self.model = GLiNER2.from_pretrained(MODEL_ID)
             self.model.to(self.device).to(TORCH_RUNTIME.torch_dtype).eval()
-            registry = _create_registry()
-            self.schema = registry.build_schema(self.model)
+            self.schema, schema_summary = _create_schema(self.model)
             logger.info(
-                "model=%s device=%s dtype=%s schema=%s registry=%s no-batch ready",
-                MODEL_ID, self.device, TORCH_RUNTIME.name, SCHEMA_MODE, registry.summary(),
+                "model=%s device=%s dtype=%s schema=%s summary=%s no-batch ready",
+                MODEL_ID,
+                self.device,
+                TORCH_RUNTIME.name,
+                SCHEMA_MODE,
+                schema_summary,
             )
 
         async def __call__(self, request):
