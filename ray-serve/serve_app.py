@@ -68,6 +68,7 @@ def _build_deployment():
 
         @serve.deployment(
             num_replicas=1,
+            ray_actor_options={"num_gpus": 1},
             max_ongoing_requests=int(
                 os.environ.get("MAX_ONGOING_REQUESTS", "200")
             ),
@@ -110,6 +111,7 @@ def _build_deployment():
 
     @serve.deployment(
         num_replicas=1,
+        ray_actor_options={"num_gpus": 1},
         max_ongoing_requests=int(
             os.environ.get("MAX_ONGOING_REQUESTS", "200")
         ),

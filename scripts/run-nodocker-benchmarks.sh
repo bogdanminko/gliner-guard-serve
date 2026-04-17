@@ -35,6 +35,7 @@ UV_CACHE_DIR="${UV_CACHE_DIR:-/root/.cache/uv}"
 HF_HOME="${HF_HOME:-/root/.cache/huggingface}"
 RAY_TMPDIR="${RAY_TMPDIR:-/tmp/ray}"
 PYTHONDONTWRITEBYTECODE="${PYTHONDONTWRITEBYTECODE:-1}"
+EXPECT_GPU="${EXPECT_GPU:-1}"
 
 RAW_RESULTS_DIR_REL="${RAW_RESULTS_DIR_REL:-artifacts/raw-results}"
 LOG_DIR_REL="${LOG_DIR_REL:-artifacts/logs}"
@@ -230,6 +231,32 @@ PY
     )
 }
 
+gpu_memory_used_mb() {
+    nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits \
+        | awk 'NR==1 {print int($1)}'
+}
+
+assert_gpu_in_use() {
+    if [ "${EXPECT_GPU}" != "1" ]; then
+        return 0
+    fi
+
+    local attempts="${1:-15}"
+    local used_mb
+
+    for _ in $(seq 1 "${attempts}"); do
+        used_mb="$(gpu_memory_used_mb || echo 0)"
+        if [ "${used_mb}" -gt 0 ]; then
+            log "GPU check passed: ${used_mb} MiB in use"
+            return 0
+        fi
+        sleep 2
+    done
+
+    log "GPU check failed: nvidia-smi still reports 0 MiB in use"
+    return 1
+}
+
 start_server() {
     local app_script="$1"
     local model_id="$2"
@@ -299,6 +326,10 @@ run_rest_bench() {
 
     log "Warmup REST ${prefix}"
     warmup_rest
+    assert_gpu_in_use || {
+        stop_ray_stack "${pid_file}"
+        return 1
+    }
 
     bash "${WORKTREE_DIR}/scripts/collect_gpu_metrics.sh" \
         "${raw_dir}/gpu-${prefix}.csv" \
@@ -354,6 +385,10 @@ run_grpc_bench() {
 
     log "Warmup gRPC ${prefix}"
     warmup_grpc
+    assert_gpu_in_use || {
+        stop_ray_stack "${pid_file}"
+        return 1
+    }
 
     bash "${WORKTREE_DIR}/scripts/collect_gpu_metrics.sh" \
         "${raw_dir}/gpu-${prefix}.csv" \
