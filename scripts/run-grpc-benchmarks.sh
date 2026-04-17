@@ -18,6 +18,20 @@ MODEL_ID="${MODEL_ID:-hivetrace/gliner-guard-uniencoder}"
 MODEL_SHORT="${MODEL_SHORT:-uni}"
 MAX_BATCH_SIZE="${MAX_BATCH_SIZE:-0}"
 BATCH_WAIT_TIMEOUT="${BATCH_WAIT_TIMEOUT:-0.05}"
+TORCH_DTYPE="${TORCH_DTYPE:-bf16}"
+
+normalize_dtype_tag() {
+    case "${TORCH_DTYPE,,}" in
+        bf16|bfloat16) echo "bf16" ;;
+        fp16|float16) echo "fp16" ;;
+        *)
+            echo "Unsupported TORCH_DTYPE=${TORCH_DTYPE}. Use bf16 or fp16." >&2
+            exit 1
+            ;;
+    esac
+}
+
+DTYPE_TAG="$(normalize_dtype_tag)"
 
 mkdir -p results
 
@@ -87,18 +101,20 @@ for i in range(${WARMUP_REQS}):
 
 run_rest_bench() {
     local run_num="$1"
-    local batch_tag=""
-    [ "${MAX_BATCH_SIZE}" -gt 0 ] && batch_tag="-B${MAX_BATCH_SIZE}"
-    local prefix="ray-rest${batch_tag}-${MODEL_SHORT}-${DATASET}-run${run_num}"
+    local config_tag="nobatch"
+    [ "${MAX_BATCH_SIZE}" -gt 0 ] && config_tag="B${MAX_BATCH_SIZE}"
+    local prefix="ray-rest-${DTYPE_TAG}-${config_tag}-${MODEL_SHORT}-${DATASET}-run${run_num}"
 
     echo ""
     echo "=========================================="
     echo "  REST Benchmark: ${prefix}"
+    echo "  DType: ${DTYPE_TAG}"
     echo "  Batch: ${MAX_BATCH_SIZE}, Run: ${run_num}/${REPEATS}"
     echo "=========================================="
 
     MODEL_ID="${MODEL_ID}" MAX_BATCH_SIZE="${MAX_BATCH_SIZE}" \
         BATCH_WAIT_TIMEOUT="${BATCH_WAIT_TIMEOUT}" \
+        TORCH_DTYPE="${DTYPE_TAG}" \
         docker compose --profile ray-serve up -d ray-serve 2>&1 | tail -2
     wait_ready_rest || return 1
     warmup_rest
@@ -131,18 +147,20 @@ run_rest_bench() {
 
 run_grpc_bench() {
     local run_num="$1"
-    local batch_tag=""
-    [ "${MAX_BATCH_SIZE}" -gt 0 ] && batch_tag="-B${MAX_BATCH_SIZE}"
-    local prefix="ray-grpc${batch_tag}-${MODEL_SHORT}-${DATASET}-run${run_num}"
+    local config_tag="nobatch"
+    [ "${MAX_BATCH_SIZE}" -gt 0 ] && config_tag="B${MAX_BATCH_SIZE}"
+    local prefix="ray-grpc-${DTYPE_TAG}-${config_tag}-${MODEL_SHORT}-${DATASET}-run${run_num}"
 
     echo ""
     echo "=========================================="
     echo "  gRPC Benchmark: ${prefix}"
+    echo "  DType: ${DTYPE_TAG}"
     echo "  Batch: ${MAX_BATCH_SIZE}, Run: ${run_num}/${REPEATS}"
     echo "=========================================="
 
     MODEL_ID="${MODEL_ID}" MAX_BATCH_SIZE="${MAX_BATCH_SIZE}" \
         BATCH_WAIT_TIMEOUT="${BATCH_WAIT_TIMEOUT}" \
+        TORCH_DTYPE="${DTYPE_TAG}" \
         docker compose --profile ray-serve-grpc up -d ray-serve-grpc 2>&1 | tail -2
     wait_ready_rest || return 1  # gRPC app also serves REST on 8000
     sleep 5  # extra time for gRPC proxy to start
@@ -178,6 +196,7 @@ total_runs=$((REPEATS * 2))
 echo "======================================================"
 echo "  Ray Serve REST vs gRPC Benchmark"
 echo "  Model: ${MODEL_SHORT} (${MODEL_ID})"
+echo "  DType: ${DTYPE_TAG}"
 echo "  Batch: ${MAX_BATCH_SIZE}"
 echo "  Repeats: ${REPEATS} per protocol"
 echo "  Total runs: ${total_runs} (${REPEATS} REST + ${REPEATS} gRPC)"
@@ -208,7 +227,7 @@ echo ""
 echo "Summary:"
 echo "| Benchmark | RPS | P50 (ms) | P95 (ms) | Failures |"
 echo "|-----------|----:|--------:|---------:|---------:|"
-for f in results/ray-rest-*_stats.csv results/ray-grpc-*_stats.csv; do
+for f in results/ray-rest-"${DTYPE_TAG}"-*_stats.csv results/ray-grpc-"${DTYPE_TAG}"-*_stats.csv; do
     [ -f "$f" ] || continue
     name=$(basename "$f" _stats.csv)
     tail -1 "$f" | awk -F',' -v n="$name" '{printf "| %s | %.1f | %s | %s | %s |\n", n, $10, $6, $8, $4}'

@@ -6,6 +6,7 @@ from ray import serve
 from ray.serve.config import gRPCOptions
 
 from gliner2 import GLiNER2
+from runtime_config import resolve_torch_dtype
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 MODEL_ID = os.environ.get("MODEL_ID", "hivetrace/gliner-guard-uniencoder")
 MAX_BATCH_SIZE = int(os.environ.get("MAX_BATCH_SIZE", "0"))
 BATCH_WAIT_TIMEOUT = float(os.environ.get("BATCH_WAIT_TIMEOUT", "0.05"))
+TORCH_RUNTIME = resolve_torch_dtype()
 
 PII_LABELS = ["person", "address", "email", "phone"]
 SAFETY_LABELS = ["safe", "unsafe"]
@@ -46,15 +48,15 @@ def _build_grpc_deployment():
             def __init__(self):
                 self.device = "cuda" if torch.cuda.is_available() else "cpu"
                 self.model = GLiNER2.from_pretrained(MODEL_ID)
-                self.model.to(self.device).to(torch.bfloat16).eval()
+                self.model.to(self.device).to(TORCH_RUNTIME.torch_dtype).eval()
                 self.schema = (
                     self.model.create_schema()
                     .entities(entity_types=PII_LABELS, threshold=0.4)
                     .classification(task="safety", labels=SAFETY_LABELS)
                 )
                 logger.info(
-                    "gRPC model=%s device=%s batch_size=%d ready",
-                    MODEL_ID, self.device, MAX_BATCH_SIZE,
+                    "gRPC model=%s device=%s dtype=%s batch_size=%d ready",
+                    MODEL_ID, self.device, TORCH_RUNTIME.name, MAX_BATCH_SIZE,
                 )
 
             @serve.batch(
@@ -90,14 +92,15 @@ def _build_grpc_deployment():
         def __init__(self):
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             self.model = GLiNER2.from_pretrained(MODEL_ID)
-            self.model.to(self.device).to(torch.bfloat16).eval()
+            self.model.to(self.device).to(TORCH_RUNTIME.torch_dtype).eval()
             self.schema = (
                 self.model.create_schema()
                 .entities(entity_types=PII_LABELS, threshold=0.4)
                 .classification(task="safety", labels=SAFETY_LABELS)
             )
             logger.info(
-                "gRPC model=%s device=%s no-batch ready", MODEL_ID, self.device,
+                "gRPC model=%s device=%s dtype=%s no-batch ready",
+                MODEL_ID, self.device, TORCH_RUNTIME.name,
             )
 
         async def Predict(self, request) -> "PredictResponse":  # noqa: N802, F821

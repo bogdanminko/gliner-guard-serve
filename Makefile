@@ -16,6 +16,8 @@ USERS       ?= 100
 SPAWN_RATE  ?= 1
 DATASET     ?= prompts
 WARMUP_REQS ?= 50
+TORCH_DTYPE ?= bf16
+TORCH_DTYPE_TAG = $(if $(filter bfloat16,$(TORCH_DTYPE)),bf16,$(if $(filter float16,$(TORCH_DTYPE)),fp16,$(TORCH_DTYPE)))
 
 # Model IDs
 MODEL_UNI := hivetrace/gliner-guard-uniencoder
@@ -41,11 +43,11 @@ up-litserve: ## Start LitServe baseline
 	@$(MAKE) wait-ready
 
 up-ray-nobatch: ## Start Ray Serve without batching
-	MODEL_ID=$(MODEL_ID) MAX_BATCH_SIZE=0 docker compose --profile ray-serve up -d
+	MODEL_ID=$(MODEL_ID) TORCH_DTYPE=$(TORCH_DTYPE_TAG) MAX_BATCH_SIZE=0 docker compose --profile ray-serve up -d
 	@$(MAKE) wait-ready
 
 up-ray-batch: ## Start Ray Serve with batching (use MAX_BATCH_SIZE, BATCH_WAIT_TIMEOUT)
-	MODEL_ID=$(MODEL_ID) docker compose --profile ray-serve up -d
+	MODEL_ID=$(MODEL_ID) TORCH_DTYPE=$(TORCH_DTYPE_TAG) docker compose --profile ray-serve up -d
 	@$(MAKE) wait-ready
 
 down: ## Stop all services
@@ -66,7 +68,7 @@ warmup: ## Send warmup requests
 # ── Benchmark Primitives ────────────────────────────────────────────────────
 # Internal: run a single Locust benchmark
 # Args: FRAMEWORK, CONFIG, PROTOCOL (set by caller)
-RESULT_PREFIX = $(FRAMEWORK)-$(PROTOCOL)-$(CONFIG)-$(MODEL)-$(DATASET)-run$(RUN)
+RESULT_PREFIX = $(FRAMEWORK)-$(PROTOCOL)-$(if $(filter ray,$(FRAMEWORK)),$(TORCH_DTYPE_TAG)-,)$(CONFIG)-$(MODEL)-$(DATASET)-run$(RUN)
 
 define run-bench
 	@echo "=== Benchmark: $(RESULT_PREFIX) ==="
@@ -110,7 +112,7 @@ bench-ray-nobatch-uni: PROTOCOL=rest
 bench-ray-nobatch-uni: CONFIG=nobatch
 bench-ray-nobatch-uni: MODEL=uni
 bench-ray-nobatch-uni: ## Ray Serve no-batch uniencoder
-	@$(MAKE) up-ray-nobatch MODEL=uni
+	@$(MAKE) up-ray-nobatch MODEL=uni TORCH_DTYPE=$(TORCH_DTYPE_TAG)
 	$(run-bench)
 	@$(MAKE) down
 
@@ -119,7 +121,7 @@ bench-ray-nobatch-bi: PROTOCOL=rest
 bench-ray-nobatch-bi: CONFIG=nobatch
 bench-ray-nobatch-bi: MODEL=bi
 bench-ray-nobatch-bi: ## Ray Serve no-batch biencoder
-	@$(MAKE) up-ray-nobatch MODEL=bi
+	@$(MAKE) up-ray-nobatch MODEL=bi TORCH_DTYPE=$(TORCH_DTYPE_TAG)
 	$(run-bench)
 	@$(MAKE) down
 
@@ -135,7 +137,7 @@ bench-ray-$(1)-uni: PROTOCOL=rest
 bench-ray-$(1)-uni: CONFIG=$(1)
 bench-ray-$(1)-uni: MODEL=uni
 bench-ray-$(1)-uni:
-	MAX_BATCH_SIZE=$(2) BATCH_WAIT_TIMEOUT=$(3) $$(MAKE) up-ray-batch MODEL=uni
+	MAX_BATCH_SIZE=$(2) BATCH_WAIT_TIMEOUT=$(3) TORCH_DTYPE=$(TORCH_DTYPE_TAG) $$(MAKE) up-ray-batch MODEL=uni
 	$$(run-bench)
 	@$$(MAKE) down
 
@@ -144,7 +146,7 @@ bench-ray-$(1)-bi: PROTOCOL=rest
 bench-ray-$(1)-bi: CONFIG=$(1)
 bench-ray-$(1)-bi: MODEL=bi
 bench-ray-$(1)-bi:
-	MAX_BATCH_SIZE=$(2) BATCH_WAIT_TIMEOUT=$(3) $$(MAKE) up-ray-batch MODEL=bi
+	MAX_BATCH_SIZE=$(2) BATCH_WAIT_TIMEOUT=$(3) TORCH_DTYPE=$(TORCH_DTYPE_TAG) $$(MAKE) up-ray-batch MODEL=bi
 	$$(run-bench)
 	@$$(MAKE) down
 endef

@@ -17,6 +17,20 @@ DATASET="${DATASET:-prompts}"
 REPEATS="${REPEATS:-1}"
 MODEL_ID="${MODEL_ID:-hivetrace/gliner-guard-uniencoder}"
 MODEL_SHORT="${MODEL_SHORT:-uni}"
+TORCH_DTYPE="${TORCH_DTYPE:-bf16}"
+
+normalize_dtype_tag() {
+    case "${TORCH_DTYPE,,}" in
+        bf16|bfloat16) echo "bf16" ;;
+        fp16|float16) echo "fp16" ;;
+        *)
+            echo "Unsupported TORCH_DTYPE=${TORCH_DTYPE}. Use bf16 or fp16." >&2
+            exit 1
+            ;;
+    esac
+}
+
+DTYPE_TAG="$(normalize_dtype_tag)"
 
 # Batch configurations: "ID:max_batch_size:batch_wait_timeout"
 # B1-B8: systematic sweep (batch_size × timeout)
@@ -79,12 +93,13 @@ run_bench() {
     local batch_size="$2"
     local batch_timeout="$3"
     local run_num="$4"
-    local prefix="ray-rest-${batch_id}-${MODEL_SHORT}-${DATASET}-run${run_num}"
+    local prefix="ray-rest-${DTYPE_TAG}-${batch_id}-${MODEL_SHORT}-${DATASET}-run${run_num}"
 
     echo ""
     echo "=========================================="
     echo "  Benchmark: ${prefix}"
     echo "  Model: ${MODEL_ID}"
+    echo "  DType: ${DTYPE_TAG}"
     echo "  Batch: size=${batch_size}, timeout=${batch_timeout}"
     echo "  Run: ${run_num}/${REPEATS}"
     echo "=========================================="
@@ -93,6 +108,7 @@ run_bench() {
     echo "  Starting Ray Serve (batch_size=${batch_size}, timeout=${batch_timeout})..."
     MAX_BATCH_SIZE="${batch_size}" BATCH_WAIT_TIMEOUT="${batch_timeout}" \
         MODEL_ID="${MODEL_ID}" \
+        TORCH_DTYPE="${DTYPE_TAG}" \
         docker compose --profile ray-serve up -d ray-serve 2>&1 | tail -2
     if ! wait_ready; then
         echo "  FATAL: server didn't start. Stopping container..."
@@ -146,6 +162,7 @@ total_runs=$(( ${#CONFIGS[@]} * REPEATS ))
 echo "======================================================"
 echo "  Ray Serve Dynamic Batching Sweep"
 echo "  Model: ${MODEL_SHORT} (${MODEL_ID})"
+echo "  DType: ${DTYPE_TAG}"
 echo "  Configs: ${#CONFIGS[@]} (B1-B8)"
 echo "  Repeats: ${REPEATS} per config"
 echo "  Total runs: ${total_runs}"
@@ -198,7 +215,7 @@ echo ""
 echo "Summary:"
 echo "| Benchmark | RPS | P50 (ms) | P95 (ms) | Failures |"
 echo "|-----------|----:|--------:|---------:|---------:|"
-for f in results/ray-rest-B*_stats.csv; do
+for f in results/ray-rest-"${DTYPE_TAG}"-B*_stats.csv; do
     [ -f "$f" ] || continue
     name=$(basename "$f" _stats.csv)
     tail -1 "$f" | awk -F',' -v n="$name" '{printf "| %s | %.1f | %s | %s | %s |\n", n, $10, $6, $8, $4}'

@@ -6,6 +6,7 @@ from ray import serve
 
 from gliner2 import GLiNER2
 from gliner2.inference.schema_registry import SchemaRegistry
+from runtime_config import resolve_torch_dtype
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ MODEL_ID = os.environ.get("MODEL_ID", "hivetrace/gliner-guard-uniencoder")
 MAX_BATCH_SIZE = int(os.environ.get("MAX_BATCH_SIZE", "0"))
 BATCH_WAIT_TIMEOUT = float(os.environ.get("BATCH_WAIT_TIMEOUT", "0.05"))
 SCHEMA_MODE = os.environ.get("SCHEMA_MODE", "minimal")  # minimal | full
+TORCH_RUNTIME = resolve_torch_dtype()
 
 
 def _create_registry() -> SchemaRegistry:
@@ -70,13 +72,14 @@ def _build_deployment():
             def __init__(self):
                 self.device = "cuda" if torch.cuda.is_available() else "cpu"
                 self.model = GLiNER2.from_pretrained(MODEL_ID)
-                self.model.to(self.device).to(torch.bfloat16).eval()
+                self.model.to(self.device).to(TORCH_RUNTIME.torch_dtype).eval()
                 registry = _create_registry()
                 self.schema = registry.build_schema(self.model)
                 logger.info(
-                    "model=%s device=%s schema=%s batch_size=%d timeout=%.3f registry=%s ready",
+                    "model=%s device=%s dtype=%s schema=%s batch_size=%d timeout=%.3f registry=%s ready",
                     MODEL_ID,
                     self.device,
+                    TORCH_RUNTIME.name,
                     SCHEMA_MODE,
                     MAX_BATCH_SIZE,
                     BATCH_WAIT_TIMEOUT,
@@ -112,12 +115,12 @@ def _build_deployment():
         def __init__(self):
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             self.model = GLiNER2.from_pretrained(MODEL_ID)
-            self.model.to(self.device).to(torch.bfloat16).eval()
+            self.model.to(self.device).to(TORCH_RUNTIME.torch_dtype).eval()
             registry = _create_registry()
             self.schema = registry.build_schema(self.model)
             logger.info(
-                "model=%s device=%s schema=%s registry=%s no-batch ready",
-                MODEL_ID, self.device, SCHEMA_MODE, registry.summary(),
+                "model=%s device=%s dtype=%s schema=%s registry=%s no-batch ready",
+                MODEL_ID, self.device, TORCH_RUNTIME.name, SCHEMA_MODE, registry.summary(),
             )
 
         async def __call__(self, request):

@@ -59,10 +59,16 @@ results/
 results/
   ray-serve/
     gliner-guard-uni/
+      pytorch-fp16-rest-nobatch.csv
+      pytorch-fp16-rest-dynbatch.csv
+      pytorch-fp16-grpc-dynbatch.csv
       pytorch-bf16-rest-nobatch.csv
       pytorch-bf16-rest-dynbatch.csv
       pytorch-bf16-grpc-dynbatch.csv
     gliner-guard-bi/
+      pytorch-fp16-rest-nobatch.csv
+      pytorch-fp16-rest-dynbatch.csv
+      pytorch-fp16-grpc-dynbatch.csv
       pytorch-bf16-rest-nobatch.csv
       pytorch-bf16-rest-dynbatch.csv
       pytorch-bf16-grpc-dynbatch.csv
@@ -74,12 +80,15 @@ results/
 ```bash
 python3 scripts/curate_ray_results.py \
   --model gliner-guard-uni \
-  --rest-nobatch ray-rest-nobatch-uni-prompts-run2 \
-  --rest-dynbatch ray-rest-B4-uni-prompts-run2 \
-  --grpc-dynbatch ray-grpc-B4-uni-prompts-run2
+  --dtype bf16 \
+  --rest-nobatch ray-rest-bf16-nobatch-uni-prompts-run2 \
+  --rest-dynbatch ray-rest-bf16-B4-uni-prompts-run2 \
+  --grpc-dynbatch ray-grpc-bf16-B16-uni-prompts-run2
 ```
 
-Аналогично для `gliner-guard-bi`.
+Для one-to-one сравнения против `fp16` baseline повторите тот же шаг с
+`--dtype fp16`. Raw Ray Serve префиксы тоже стоит писать с dtype в имени,
+чтобы `fp16` и `bf16` прогоны не перезаписывали друг друга.
 
 ### Обновление таблицы в README
 
@@ -96,7 +105,7 @@ make bench-readme
 При добавлении нового бенчмарка создайте файл `docs/<имя-метода>.md` по аналогии с [docs/litserve-baseline.md](litserve-baseline.md). Что стоит указать:
 
 - формат модели (PyTorch, ONNX, TensorRT и т.д.)
-- точность (fp32, fp16, int8)
+- точность (fp32, fp16, bf16, int8)
 - требования к железу (например: только NVIDIA GPU, минимум N GB VRAM)
 - batching-стратегия (dynamic batching, max batch size)
 - другие оптимизации (compilation, кастомные операторы и т.д.)

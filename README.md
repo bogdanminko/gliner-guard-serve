@@ -23,6 +23,7 @@
 
 Таблица обновляется командой: `make bench-readme`
 считывая curated `.csv` файлы рекурсивно из директории `results/`
+Ray Serve прогоны теперь можно повторять в обоих режимах: `TORCH_DTYPE=bf16` и `TORCH_DTYPE=fp16`.
 
 <!-- BENCH:START -->
 | Model                         | Serving  | Runtime                   |     RPS | P50 (ms) | P95 (ms) | P99 (ms) | Err rate (%) |

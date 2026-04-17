@@ -50,6 +50,7 @@ services:
       - MAX_BATCH_SIZE=${MAX_BATCH_SIZE:-0}
       - BATCH_WAIT_TIMEOUT=${BATCH_WAIT_TIMEOUT:-0.05}
       - MODEL_ID=${MODEL_ID:-hivetrace/gliner-guard-uniencoder}
+      - TORCH_DTYPE=${TORCH_DTYPE:-bf16}
       - MAX_ONGOING_REQUESTS=${MAX_ONGOING_REQUESTS:-200}
     profiles: [ray-serve]
 
@@ -70,6 +71,7 @@ services:
       - MAX_BATCH_SIZE=${MAX_BATCH_SIZE:-0}
       - BATCH_WAIT_TIMEOUT=${BATCH_WAIT_TIMEOUT:-0.05}
       - MODEL_ID=${MODEL_ID:-hivetrace/gliner-guard-uniencoder}
+      - TORCH_DTYPE=${TORCH_DTYPE:-bf16}
       - MAX_ONGOING_REQUESTS=${MAX_ONGOING_REQUESTS:-200}
     profiles: [ray-serve-grpc]
 
