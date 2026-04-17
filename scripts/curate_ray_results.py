@@ -14,6 +14,7 @@ by the upstream benchmark table generator:
 
 Example:
   python3 scripts/curate_ray_results.py \
+    --source-dir artifacts/raw-results \
     --model gliner-guard-uni \
     --dtype bf16 \
     --rest-nobatch ray-rest-bf16-nobatch-uni-prompts-run2 \
@@ -39,9 +40,11 @@ DTYPE_RUNTIME_PREFIX = {
 }
 
 
-def _copy_artifact(prefix: str, target_dir: Path, runtime_name: str) -> None:
-    stats_src = RESULTS_DIR / f"{prefix}_stats.csv"
-    html_src = RESULTS_DIR / f"{prefix}.html"
+def _copy_artifact(
+    source_dir: Path, prefix: str, target_dir: Path, runtime_name: str
+) -> None:
+    stats_src = source_dir / f"{prefix}_stats.csv"
+    html_src = source_dir / f"{prefix}.html"
 
     if not stats_src.exists():
         raise FileNotFoundError(f"Missing stats CSV: {stats_src}")
@@ -72,6 +75,11 @@ def main() -> None:
         description="Copy selected Ray Serve raw results into README-ready layout."
     )
     parser.add_argument(
+        "--source-dir",
+        default=str(RESULTS_DIR),
+        help="Directory containing raw benchmark artifacts (default: results/)",
+    )
+    parser.add_argument(
         "--model",
         required=True,
         help="Target model directory name, e.g. gliner-guard-uni or gliner-guard-bi",
@@ -99,10 +107,19 @@ def main() -> None:
     args = parser.parse_args()
 
     runtime_map = _runtime_map(args.dtype)
+    source_dir = Path(args.source_dir).expanduser()
+    if not source_dir.is_absolute():
+        source_dir = ROOT / source_dir
     target_dir = RESULTS_DIR / "ray-serve" / args.model
-    _copy_artifact(args.rest_nobatch, target_dir, runtime_map["rest_nobatch"])
-    _copy_artifact(args.rest_dynbatch, target_dir, runtime_map["rest_dynbatch"])
-    _copy_artifact(args.grpc_dynbatch, target_dir, runtime_map["grpc_dynbatch"])
+    _copy_artifact(
+        source_dir, args.rest_nobatch, target_dir, runtime_map["rest_nobatch"]
+    )
+    _copy_artifact(
+        source_dir, args.rest_dynbatch, target_dir, runtime_map["rest_dynbatch"]
+    )
+    _copy_artifact(
+        source_dir, args.grpc_dynbatch, target_dir, runtime_map["grpc_dynbatch"]
+    )
 
     print(f"Curated Ray Serve results written to {target_dir}")
 

@@ -199,7 +199,7 @@ generate-data-external: ## Download XSTest + AYA Russian from HuggingFace
 	cd scripts && uv run python prepare_datasets.py
 
 # ── Utilities ───────────────────────────────────────────────────────────────
-.PHONY: bench-readme curate-ray-results gpu-metrics help
+.PHONY: bench-readme curate-ray-results gpu-metrics bench-ray-nodocker help
 
 bench-readme: ## Update README.md with benchmark results from results/**/*.csv
 	@TABLE=$$(uv run python3 scripts/gen-benchmark-table.py) && \
@@ -219,6 +219,9 @@ curate-ray-results: ## Show helper usage for README-ready Ray Serve results
 
 gpu-metrics: ## Start GPU metrics collection (DURATION=15m)
 	bash scripts/collect_gpu_metrics.sh results/gpu-manual-$$(date +%s).csv $$(echo $(DURATION) | sed 's/m//' | awk '{print $$1*60}')
+
+bench-ray-nodocker: ## Run the Ray Serve benchmark matrix without Docker (Runpod-friendly)
+	./scripts/run-nodocker-benchmarks.sh
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-28s\033[0m %s\n", $$1, $$2}'

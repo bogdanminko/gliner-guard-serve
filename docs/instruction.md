@@ -79,6 +79,7 @@ results/
 
 ```bash
 python3 scripts/curate_ray_results.py \
+  --source-dir results \
   --model gliner-guard-uni \
   --dtype bf16 \
   --rest-nobatch ray-rest-bf16-nobatch-uni-prompts-run2 \
@@ -89,6 +90,28 @@ python3 scripts/curate_ray_results.py \
 Для one-to-one сравнения против `fp16` baseline повторите тот же шаг с
 `--dtype fp16`. Raw Ray Serve префиксы тоже стоит писать с dtype в имени,
 чтобы `fp16` и `bf16` прогоны не перезаписывали друг друга.
+
+### No-Docker fallback для Runpod
+
+Если на GPU VM Docker недоступен или нестабилен, используйте no-Docker раннер:
+
+```bash
+REPEATS=1 USERS=100 DURATION=15m ./scripts/run-nodocker-benchmarks.sh
+```
+
+Что делает скрипт:
+
+- клонирует ветку `feat/ray-serve-uni-bi` на локальный диск VM (`/root/...`), а не в `/workspace`
+- поднимает Ray Serve напрямую через `uv` и локальные `.venv`
+- прогоняет `uniencoder + biencoder`, `bf16 + fp16`,
+  `REST nobatch + REST dynbatch + gRPC dynbatch`
+- складывает raw-артефакты в `artifacts/raw-results/`
+- автоматически раскладывает curated CSV/HTML в `results/ray-serve/...`
+- в конце обновляет `README.md` через `make bench-readme`
+
+Для Runpod это предпочтительнее запуска из `/workspace`, потому что там volume
+смонтирован через `fuse`, а heavy Python/Ray/Torch окружения заметно медленнее
+стартуют с сетевой файловой системы.
 
 ### Обновление таблицы в README
 
