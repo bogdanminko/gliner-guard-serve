@@ -7,7 +7,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-REPO_URL="${REPO_URL:-https://github.com/bogdanminko/gliner-guard-serve.git}"
+REPO_URL="${REPO_URL:-https://github.com/adapstory/gliner-guard-serve.git}"
 BRANCH="${BRANCH:-feat/ray-serve-uni-bi}"
 WORKTREE_DIR="${WORKTREE_DIR:-/root/gliner-guard-serve-pr-local}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.12}"

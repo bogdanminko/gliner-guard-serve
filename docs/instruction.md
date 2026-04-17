@@ -102,6 +102,7 @@ REPEATS=1 USERS=100 DURATION=15m ./scripts/run-nodocker-benchmarks.sh
 Что делает скрипт:
 
 - клонирует ветку `feat/ray-serve-uni-bi` на локальный диск VM (`/root/...`), а не в `/workspace`
+- по умолчанию тянет актуальную PR-ветку из `adapstory/gliner-guard-serve`
 - поднимает Ray Serve напрямую через `uv` и локальные `.venv`
 - прогоняет `uniencoder + biencoder`, `bf16 + fp16`,
   `REST nobatch + REST dynbatch + gRPC dynbatch`
