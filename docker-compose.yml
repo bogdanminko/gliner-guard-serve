@@ -1,0 +1,106 @@
+x-gpu: &gpu
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+
+x-server: &server
+  <<: *gpu
+  env_file: .env
+  volumes:
+    - hf-cache:/app/.cache/huggingface
+  networks:
+    bench:
+      aliases:
+        - server
+  healthcheck:
+    test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/predict', data=b'{\"text\":\"ping\"}')\""]
+    interval: 10s
+    timeout: 5s
+    retries: 30
+    start_period: 120s
+
+services:
+  litserve:
+    <<: *server
+    build:
+      context: litserve-baseline
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-harbor.adapstory.com/adapstory}/gliner-guard-litserve:${TAG:-dev}
+    ports:
+      - "8000:8000"
+    profiles: [litserve]
+
+  ray-serve:
+    <<: *server
+    build:
+      context: ray-serve
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-harbor.adapstory.com/adapstory}/gliner-guard-ray-serve:${TAG:-dev}
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    shm_size: "2g"
+    environment:
+      - RAY_OBJECT_STORE_MEMORY=500000000
+      - RAY_memory_monitor_refresh_ms=0
+      - MAX_BATCH_SIZE=${MAX_BATCH_SIZE:-0}
+      - BATCH_WAIT_TIMEOUT=${BATCH_WAIT_TIMEOUT:-0.05}
+      - MODEL_ID=${MODEL_ID:-hivetrace/gliner-guard-uniencoder}
+      - MAX_ONGOING_REQUESTS=${MAX_ONGOING_REQUESTS:-200}
+    profiles: [ray-serve]
+
+  ray-serve-grpc:
+    <<: *server
+    build:
+      context: ray-serve
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-harbor.adapstory.com/adapstory}/gliner-guard-ray-serve:${TAG:-dev}
+    command: ["uv", "run", "python", "serve_app_grpc.py"]
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    shm_size: "2g"
+    environment:
+      - RAY_OBJECT_STORE_MEMORY=500000000
+      - RAY_memory_monitor_refresh_ms=0
+      - MAX_BATCH_SIZE=${MAX_BATCH_SIZE:-0}
+      - BATCH_WAIT_TIMEOUT=${BATCH_WAIT_TIMEOUT:-0.05}
+      - MODEL_ID=${MODEL_ID:-hivetrace/gliner-guard-uniencoder}
+      - MAX_ONGOING_REQUESTS=${MAX_ONGOING_REQUESTS:-200}
+    profiles: [ray-serve-grpc]
+
+  locust:
+    build:
+      context: .
+      dockerfile: Dockerfile.locust
+    image: gliner-guard-locust:dev
+    volumes:
+      - ./test-script:/app/data:ro
+      - ./results:/app/results
+    environment:
+      - LOCUST_HOST=http://server:8000
+      - LOCUST_USERS=${LOCUST_USERS:-100}
+      - LOCUST_SPAWN_RATE=${LOCUST_SPAWN_RATE:-1}
+      - LOCUST_RUN_TIME=${LOCUST_RUN_TIME:-15m}
+      - DATASET=${DATASET:-prompts}
+    ports:
+      - "8089:8089"
+    networks:
+      - bench
+    depends_on:
+      litserve:
+        condition: service_healthy
+        required: false
+      ray-serve:
+        condition: service_healthy
+        required: false
+
+volumes:
+  hf-cache:
+
+networks:
+  bench:

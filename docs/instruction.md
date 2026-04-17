@@ -41,7 +41,7 @@ uv run locust -f test-gliner.py -u 100 -r 1 --run-time 15m --csv=stats_name
 - **report.html** — полный отчёт
 - **requests.csv** — статистика по запросам (используется для генерации таблицы в README)
 
-Сохранить файлы в `results/` с понятным именем:
+Сохранить raw файлы в `results/` с понятным именем:
 
 ```
 results/
@@ -49,13 +49,47 @@ results/
 └── litserve-baseline.html   # report.html из Locust
 ```
 
+### Curated layout для README
+
+Генератор таблицы в этом репозитории проходит по `results/**/*.csv`, поэтому
+для итогового README стоит хранить только отобранные benchmark-артефакты в
+отдельной структуре:
+
+```text
+results/
+  ray-serve/
+    gliner-guard-uni/
+      pytorch-bf16-rest-nobatch.csv
+      pytorch-bf16-rest-dynbatch.csv
+      pytorch-bf16-grpc-dynbatch.csv
+    gliner-guard-bi/
+      pytorch-bf16-rest-nobatch.csv
+      pytorch-bf16-rest-dynbatch.csv
+      pytorch-bf16-grpc-dynbatch.csv
+```
+
+После нового прогона raw Ray Serve результаты можно разложить в этот layout
+через helper-скрипт:
+
+```bash
+python3 scripts/curate_ray_results.py \
+  --model gliner-guard-uni \
+  --rest-nobatch ray-rest-nobatch-uni-prompts-run2 \
+  --rest-dynbatch ray-rest-B4-uni-prompts-run2 \
+  --grpc-dynbatch ray-grpc-B4-uni-prompts-run2
+```
+
+Аналогично для `gliner-guard-bi`.
+
 ### Обновление таблицы в README
 
 ```bash
 make bench-readme
 ```
 
-Скрипт проходит по всем `results/*.csv`, извлекает RPS, P50 и P95 из строки `Aggregated` и обновляет таблицу в README.
+Скрипт проходит по всем `results/**/*.csv`, извлекает строку `Aggregated` и
+обновляет таблицу в README с колонками `RPS`, `P50`, `P95`, `P99`,
+`Err rate`.
 
 ## Документация метода инференса
 

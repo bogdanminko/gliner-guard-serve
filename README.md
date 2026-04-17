@@ -22,7 +22,7 @@
 Пайплайн бенчмаркинга, настройка стенда и инструкция по тестированию — [docs/instruction.md](docs/instruction.md).
 
 Таблица обновляется командой: `make bench-readme`
-считывая `.csv` файлы из директории `results`
+считывая curated `.csv` файлы рекурсивно из директории `results/`
 
 <!-- BENCH:START -->
 | Model                         | Serving  | Runtime                   |     RPS | P50 (ms) | P95 (ms) | P99 (ms) | Err rate (%) |
