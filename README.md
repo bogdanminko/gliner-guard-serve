@@ -20,6 +20,7 @@
 ## Benchmarks
 
 Пайплайн бенчмаркинга, настройка стенда и инструкция по тестированию — [docs/instruction.md](docs/instruction.md).
+Итоговый sweep по dynamic batching на Runpod A100 сохранён в [docs/ray-serve-sweep-2026-04-18-final.md](docs/ray-serve-sweep-2026-04-18-final.md).
 
 Таблица обновляется командой: `make bench-readme`
 считывая curated `.csv` файлы рекурсивно из директории `results/`
@@ -38,15 +39,15 @@ Ray Serve прогоны теперь можно повторять в обои�
 | gliner2-multi-v1-flashdeberta | litserve  | pytorch-fp16-flashdeberta  |   105.7 |      950 |     1400 |     1700 |     0.00 |
 |                               |           |                            |         |          |          |          |          |
 | gliner-guard-bi               | ray-serve | pytorch-fp16-rest-nobatch  |    22.0 |     4400 |     5000 |     5200 |     0.00 |
-|                               |           | pytorch-fp16-rest-dynbatch |    57.3 |     1700 |     2000 |     2100 |     0.00 |
-|                               |           | pytorch-fp16-grpc-dynbatch |    10.1 |       97 |  **100** |      110 |     0.00 |
+|                               |           | pytorch-fp16-rest-dynbatch |    68.3 |     1500 |     1800 |     2000 |     0.00 |
+|                               |           | pytorch-fp16-grpc-dynbatch |    17.7 |       56 |       60 |       65 |     0.00 |
 |                               |           | pytorch-bf16-rest-nobatch  |    22.3 |     4500 |     4700 |     4800 |     0.00 |
-|                               |           | pytorch-bf16-rest-dynbatch |    56.0 |     1800 |     2000 |     2100 |     0.00 |
-|                               |           | pytorch-bf16-grpc-dynbatch |    10.1 |       98 |  **100** |      110 |     0.00 |
+|                               |           | pytorch-bf16-rest-dynbatch |    67.0 |     1400 |     1900 |     2200 |     0.00 |
+|                               |           | pytorch-bf16-grpc-dynbatch |    17.4 |       56 |       62 |       67 |     0.00 |
 | gliner-guard-uni              | ray-serve | pytorch-fp16-rest-nobatch  |    34.1 |     2900 |     3200 |     3600 |     0.00 |
-|                               |           | pytorch-fp16-rest-dynbatch |    67.9 |     1400 |     1700 |     1700 |     0.00 |
-|                               |           | pytorch-fp16-grpc-dynbatch |    11.4 |   **84** |  **100** |  **100** |     0.00 |
+|                               |           | pytorch-fp16-rest-dynbatch |    71.1 |     1400 |     1600 |     1700 |     0.00 |
+|                               |           | pytorch-fp16-grpc-dynbatch |    23.5 |   **41** |       47 |       51 |     0.00 |
 |                               |           | pytorch-bf16-rest-nobatch  |    33.5 |     3000 |     3200 |     3300 |     0.00 |
-|                               |           | pytorch-bf16-rest-dynbatch |    65.4 |     1500 |     1700 |     1700 |     0.00 |
-|                               |           | pytorch-bf16-grpc-dynbatch |    11.5 |   **84** |  **100** |      110 |     0.00 |
+|                               |           | pytorch-bf16-rest-dynbatch |    66.1 |     1500 |     1700 |     1800 |     0.00 |
+|                               |           | pytorch-bf16-grpc-dynbatch |    23.3 |       42 |   **46** |   **48** |     0.00 |
 <!-- BENCH:END -->
