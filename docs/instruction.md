@@ -41,7 +41,7 @@ uv run locust -f test-gliner.py -u 100 -r 1 --run-time 15m --csv=stats_name
 - **report.html** — полный отчёт
 - **requests.csv** — статистика по запросам (используется для генерации таблицы в README)
 
-Сохранить файлы в `results/` с понятным именем:
+Сохранить raw файлы в `results/` с понятным именем:
 
 ```
 results/
@@ -49,20 +49,107 @@ results/
 └── litserve-baseline.html   # report.html из Locust
 ```
 
+### Curated layout для README
+
+Генератор таблицы в этом репозитории проходит по `results/**/*.csv`, поэтому
+для итогового README стоит хранить только отобранные benchmark-артефакты в
+отдельной структуре:
+
+```text
+results/
+  ray-serve/
+    gliner-guard-uni/
+      pytorch-fp16-rest-nobatch.csv
+      pytorch-fp16-rest-dynbatch.csv
+      pytorch-fp16-grpc-dynbatch.csv
+      pytorch-bf16-rest-nobatch.csv
+      pytorch-bf16-rest-dynbatch.csv
+      pytorch-bf16-grpc-dynbatch.csv
+    gliner-guard-bi/
+      pytorch-fp16-rest-nobatch.csv
+      pytorch-fp16-rest-dynbatch.csv
+      pytorch-fp16-grpc-dynbatch.csv
+      pytorch-bf16-rest-nobatch.csv
+      pytorch-bf16-rest-dynbatch.csv
+      pytorch-bf16-grpc-dynbatch.csv
+```
+
+После нового прогона raw Ray Serve результаты можно разложить в этот layout
+через helper-скрипт:
+
+```bash
+python3 scripts/curate_ray_results.py \
+  --source-dir results \
+  --model gliner-guard-uni \
+  --dtype bf16 \
+  --rest-nobatch ray-rest-bf16-nobatch-uni-prompts-run2 \
+  --rest-dynbatch ray-rest-bf16-B4-uni-prompts-run2 \
+  --grpc-dynbatch ray-grpc-bf16-B16-uni-prompts-run2
+```
+
+Для one-to-one сравнения против `fp16` baseline повторите тот же шаг с
+`--dtype fp16`. Raw Ray Serve префиксы тоже стоит писать с dtype в имени,
+чтобы `fp16` и `bf16` прогоны не перезаписывали друг друга.
+
+### No-Docker fallback для Runpod
+
+Если на GPU VM Docker недоступен или нестабилен, используйте no-Docker раннер:
+
+```bash
+REPEATS=1 USERS=100 DURATION=15m ./scripts/run-nodocker-benchmarks.sh
+```
+
+Что делает скрипт:
+
+- клонирует ветку `feat/ray-serve-uni-bi` на локальный диск VM (`/root/...`), а не в `/workspace`
+- по умолчанию тянет актуальную PR-ветку из `adapstory/gliner-guard-serve`
+- поднимает Ray Serve напрямую через `uv` и локальные `.venv`
+- прогоняет `uniencoder + biencoder`, `bf16 + fp16`,
+  `REST nobatch + REST dynbatch + gRPC dynbatch`
+- складывает raw-артефакты в `artifacts/raw-results/`
+- автоматически раскладывает curated CSV/HTML в `results/ray-serve/...`
+- в конце обновляет `README.md` через `make bench-readme`
+
+Для Runpod это предпочтительнее запуска из `/workspace`, потому что там volume
+смонтирован через `fuse`, а heavy Python/Ray/Torch окружения заметно медленнее
+стартуют с сетевой файловой системы.
+
+Для полного sweep-а dynamic batching по `B1..B8` без изменения curated README
+используйте тот же раннер в режиме `sweep`:
+
+```bash
+BENCH_MATRIX_MODE=sweep \
+BENCH_PROTOCOLS="rest grpc" \
+REPEATS=1 USERS=100 DURATION=15m \
+MODELS="uni bi" \
+DTYPES="bf16 fp16" \
+./scripts/run-nodocker-benchmarks.sh
+```
+
+Что меняется в режиме `sweep`:
+
+- прогоняются все конфиги `B1..B8` для каждого `protocol × model × dtype`
+- raw-артефакты пишутся отдельно в `artifacts/raw-results/sweep/`
+- серверные логи пишутся в `artifacts/logs/sweep/`
+- после каждого прогона обновляется `artifacts/raw-results/sweep-summary.csv`
+- `README.md` и curated layout `results/ray-serve/...` не трогаются автоматически
+
 ### Обновление таблицы в README
 
 ```bash
 make bench-readme
 ```
 
-Скрипт проходит по всем `results/*.csv`, извлекает RPS, P50 и P95 из строки `Aggregated` и обновляет таблицу в README.
+Скрипт проходит по всем `results/**/*.csv`, извлекает строку `Aggregated` и
+обновляет таблицу в README с колонками `RPS`, `P50`, `P95`, `P99`,
+`Err rate`.
 
 ## Документация метода инференса
 
 При добавлении нового бенчмарка создайте файл `docs/<имя-метода>.md` по аналогии с [docs/litserve-baseline.md](litserve-baseline.md). Что стоит указать:
 
 - формат модели (PyTorch, ONNX, TensorRT и т.д.)
-- точность (fp32, fp16, int8)
+- точность (fp32, fp16, bf16, int8)
 - требования к железу (например: только NVIDIA GPU, минимум N GB VRAM)
 - batching-стратегия (dynamic batching, max batch size)
 - другие оптимизации (compilation, кастомные операторы и т.д.)
