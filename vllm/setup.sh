@@ -15,6 +15,7 @@ fi
 PROJECT_ROOT="$(dirname "$(pwd)")"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV_DIR="${PROJECT_ROOT}/.venv"
+TRANSFORMERS_SPEC="${TRANSFORMERS_SPEC:-transformers>=5.1.0,<5.2.0}"
 
 if [[ -z "${VIRTUAL_ENV:-}" ]]; then
     echo "=== Creating / using virtualenv: ${VENV_DIR} ==="
@@ -45,9 +46,13 @@ if [ "$NO_VLLM" = false ]; then
     python -m pip install python-dotenv aiohttp requests
 
     echo ""
-    echo "=== Installing vLLM (LAST — pins shared deps) ==="
-    python -m pip install vllm
+    echo "=== Installing vLLM with GLiNER-compatible transformers ==="
+    python -m pip install vllm "${TRANSFORMERS_SPEC}"
 fi
+
+echo ""
+echo "=== Checking dependency consistency ==="
+python -m pip check
 
 echo ""
 echo "=== Done ==="
@@ -55,4 +60,5 @@ python -m pip show locust | sed -n '1,3p'
 if [ "$NO_VLLM" = false ]; then
     python -m pip show vllm-factory | sed -n '1,3p'
     python -m pip show vllm | sed -n '1,3p'
+    python -m pip show transformers | sed -n '1,3p'
 fi
