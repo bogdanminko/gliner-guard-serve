@@ -16,7 +16,7 @@ PROJECT_ROOT="$(dirname "$(pwd)")"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV_DIR="${PROJECT_ROOT}/.venv"
 VLLM_SPEC="${VLLM_SPEC:-vllm==0.19.1}"
-TRANSFORMERS_SPEC="${TRANSFORMERS_SPEC:-transformers>=5.1.0,<5.2.0}"
+TRANSFORMERS_SPEC="${TRANSFORMERS_SPEC:-transformers>=4.56,<5.0}"
 
 if [[ -z "${VIRTUAL_ENV:-}" ]]; then
     echo "=== Creating / using virtualenv: ${VENV_DIR} ==="
