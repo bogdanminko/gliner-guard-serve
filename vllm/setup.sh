@@ -15,6 +15,7 @@ fi
 PROJECT_ROOT="$(dirname "$(pwd)")"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV_DIR="${PROJECT_ROOT}/.venv"
+VLLM_SPEC="${VLLM_SPEC:-vllm==0.19.1}"
 TRANSFORMERS_SPEC="${TRANSFORMERS_SPEC:-transformers>=5.1.0,<5.2.0}"
 
 if [[ -z "${VIRTUAL_ENV:-}" ]]; then
@@ -46,8 +47,8 @@ if [ "$NO_VLLM" = false ]; then
     python -m pip install python-dotenv aiohttp requests
 
     echo ""
-    echo "=== Installing vLLM with GLiNER-compatible transformers ==="
-    python -m pip install vllm "${TRANSFORMERS_SPEC}"
+    echo "=== Installing tested vLLM + GLiNER-compatible transformers ==="
+    python -m pip install "${VLLM_SPEC}" "${TRANSFORMERS_SPEC}"
 fi
 
 echo ""
