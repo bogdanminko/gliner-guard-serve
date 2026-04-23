@@ -26,13 +26,22 @@ class GLiNERGuardONNXAPI(ls.LitAPI):
         provider_options = json.loads(_provider_options) if _provider_options else None
 
         model_name = os.getenv("ONNX_MODEL_NAME", "hivetrace/gliner-guard-uniencoder-onnx")
-        self.runtime = GLiNER2ONNXRuntime.from_pretrained(
-            model_name,
-            precision=precision,
-            providers=providers,
-            provider_options=provider_options,
-            
-        )
+        if os.path.isdir(model_name):
+            logger.info("Loading ONNX model from local path: %s", model_name)
+            self.runtime = GLiNER2ONNXRuntime(
+                model_name,
+                precision=precision,
+                providers=providers,
+                provider_options=provider_options,
+            )
+        else:
+            logger.info("Loading ONNX model from Hugging Face repo: %s", model_name)
+            self.runtime = GLiNER2ONNXRuntime.from_pretrained(
+                model_name,
+                precision=precision,
+                providers=providers,
+                provider_options=provider_options,
+            )
         self.schema = (
             self.runtime.create_schema()
             .entities(entity_types=PII_LABELS, threshold=0.5)
