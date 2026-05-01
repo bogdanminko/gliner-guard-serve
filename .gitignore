@@ -117,6 +117,10 @@ ipython_config.py
 .pdm-python
 .pdm-build/
 
+# Local benchmark dumps. Curated comparison files stay in results/, and
+# committed raw evidence packs belong under artifacts/benchmarks/.
+results-runpod/
+
 # pixi
 #   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
 #pixi.lock
@@ -208,3 +212,7 @@ __marimo__/
 
 
 *.zip
+artifacts/raw-results/
+artifacts/logs/
+ray-serve/gliner_guard_pb2.py
+ray-serve/gliner_guard_pb2_grpc.py

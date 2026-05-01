@@ -1,0 +1,130 @@
+x-gpu: &gpu
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: ${GPU_COUNT:-1}
+            capabilities: [gpu]
+
+x-server: &server
+  <<: *gpu
+  env_file:
+    - ${ENV_FILE:-.env}
+  volumes:
+    - hf-cache:/app/.cache/huggingface
+  networks:
+    bench:
+      aliases:
+        - server
+  healthcheck:
+    test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/predict', data=b'{\"text\":\"ping\"}')\""]
+    interval: 10s
+    timeout: 5s
+    retries: 30
+    start_period: 120s
+
+services:
+  litserve:
+    <<: *server
+    build:
+      context: litserve-baseline
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-harbor.adapstory.com/adapstory}/gliner-guard-litserve:${TAG:-dev}
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_ID=${MODEL_ID:-hivetrace/gliner-guard-uniencoder}
+      - LITSERVE_MAX_BATCH_SIZE=${LITSERVE_MAX_BATCH_SIZE:-64}
+      - LITSERVE_BATCH_TIMEOUT=${LITSERVE_BATCH_TIMEOUT:-0.05}
+      - LITSERVE_WORKERS_PER_DEVICE=${LITSERVE_WORKERS_PER_DEVICE:-4}
+    profiles: [litserve]
+
+  ray-serve:
+    <<: *server
+    build:
+      context: ray-serve
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-harbor.adapstory.com/adapstory}/gliner-guard-ray-serve:${TAG:-dev}
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    shm_size: "2g"
+    environment:
+      - RAY_OBJECT_STORE_MEMORY=500000000
+      - RAY_memory_monitor_refresh_ms=0
+      - MAX_BATCH_SIZE=${MAX_BATCH_SIZE:-0}
+      - BATCH_WAIT_TIMEOUT=${BATCH_WAIT_TIMEOUT:-0.05}
+      - MAX_CONCURRENT_BATCHES=${MAX_CONCURRENT_BATCHES:-1}
+      - MODEL_ID=${MODEL_ID:-hivetrace/gliner-guard-uniencoder}
+      - TORCH_DTYPE=${TORCH_DTYPE:-bf16}
+      - MAX_ONGOING_REQUESTS=${MAX_ONGOING_REQUESTS:-200}
+      - NUM_REPLICAS=${NUM_REPLICAS:-1}
+      - NUM_GPUS_PER_REPLICA=${NUM_GPUS_PER_REPLICA:-1}
+      - NUM_CPUS_PER_REPLICA=${NUM_CPUS_PER_REPLICA:-1}
+      - SCHEMA_MODE=${SCHEMA_MODE:-minimal}
+      - RAY_SERVE_THROUGHPUT_OPTIMIZED=${RAY_SERVE_THROUGHPUT_OPTIMIZED:-0}
+    profiles: [ray-serve]
+
+  ray-serve-grpc:
+    <<: *server
+    build:
+      context: ray-serve
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-harbor.adapstory.com/adapstory}/gliner-guard-ray-serve:${TAG:-dev}
+    command: ["uv", "run", "python", "serve_app_grpc.py"]
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    shm_size: "2g"
+    environment:
+      - RAY_OBJECT_STORE_MEMORY=500000000
+      - RAY_memory_monitor_refresh_ms=0
+      - MAX_BATCH_SIZE=${MAX_BATCH_SIZE:-0}
+      - BATCH_WAIT_TIMEOUT=${BATCH_WAIT_TIMEOUT:-0.05}
+      - MAX_CONCURRENT_BATCHES=${MAX_CONCURRENT_BATCHES:-1}
+      - MODEL_ID=${MODEL_ID:-hivetrace/gliner-guard-uniencoder}
+      - TORCH_DTYPE=${TORCH_DTYPE:-bf16}
+      - MAX_ONGOING_REQUESTS=${MAX_ONGOING_REQUESTS:-200}
+      - NUM_REPLICAS=${NUM_REPLICAS:-1}
+      - NUM_GPUS_PER_REPLICA=${NUM_GPUS_PER_REPLICA:-1}
+      - NUM_CPUS_PER_REPLICA=${NUM_CPUS_PER_REPLICA:-1}
+      - SCHEMA_MODE=${SCHEMA_MODE:-minimal}
+      - RAY_SERVE_THROUGHPUT_OPTIMIZED=${RAY_SERVE_THROUGHPUT_OPTIMIZED:-0}
+    profiles: [ray-serve-grpc]
+
+  locust:
+    build:
+      context: .
+      dockerfile: Dockerfile.locust
+    image: gliner-guard-locust:dev
+    volumes:
+      - ./test-script:/app/data:ro
+      - ./results:/app/results
+    environment:
+      - LOCUST_HOST=http://server:8000
+      - LOCUST_USERS=${LOCUST_USERS:-100}
+      - LOCUST_SPAWN_RATE=${LOCUST_SPAWN_RATE:-1}
+      - LOCUST_RUN_TIME=${LOCUST_RUN_TIME:-15m}
+      - LOCUST_USER_THROUGHPUT=${LOCUST_USER_THROUGHPUT:-5}
+      - DATASET=${DATASET:-prompts}
+    ports:
+      - "8089:8089"
+    networks:
+      - bench
+    depends_on:
+      litserve:
+        condition: service_healthy
+        required: false
+      ray-serve:
+        condition: service_healthy
+        required: false
+      ray-serve-grpc:
+        condition: service_healthy
+        required: false
+
+volumes:
+  hf-cache:
+
+networks:
+  bench:
