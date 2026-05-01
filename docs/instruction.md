@@ -57,6 +57,37 @@ make bench-readme
 
 Скрипт проходит по всем `results/*.csv`, извлекает RPS, P50 и P95 из строки `Aggregated` и обновляет таблицу в README.
 
+## vLLM-эксперименты
+
+Для vLLM используется отдельный Locust-тест `test-script/test-gliner-vllm.py`, адаптированный под endpoint `/pooling`.
+
+### Запуск вручную
+
+```bash
+# 1. Запустить сервер
+cd vllm && ./serve.sh
+
+# 2. На клиентской машине — запустить Locust
+cd test-script
+GLINER_HOST=http://<server-host>:8000 \
+uv run locust -f test-gliner-vllm.py -u 100 -r 1 --run-time 15m --csv=vllm-bfloat16-eager
+```
+
+### Автоматический прогон всех конфигураций
+
+```bash
+cd vllm
+
+# Локально (Locust на той же машине)
+./experiments.sh
+
+# Удалённо (Locust на отдельном CPU pod через Global Networking)
+LOCUST_SSH=root@<CPU_PUBLIC_IP> LOCUST_SSH_PORT=<CPU_SSH_PORT> GPU_POD_HOST=<GPU_POD_ID>.runpod.internal ./experiments.sh
+```
+
+Результаты сохраняются в `results/vllm/gliner-guard-uni/`.
+Подробности — [docs/vllm.md](vllm.md), [docs/vllm-experiments-v2.md](vllm-experiments-v2.md).
+
 ## Документация метода инференса
 
 При добавлении нового бенчмарка создайте файл `docs/<имя-метода>.md` по аналогии с [docs/litserve-baseline.md](litserve-baseline.md). Что стоит указать:
