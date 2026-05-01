@@ -4,6 +4,8 @@
 # Usage:
 #   ./setup.sh           # full install (GPU machine)
 #   ./setup.sh --no-vllm # Locust-only install (CPU pod / local testing)
+#   VLLM_FACTORY_GIT_REF=<branch-or-commit> ./setup.sh
+#   VLLM_FACTORY_GIT_URL=<repo-url> ./setup.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -17,6 +19,14 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV_DIR="${PROJECT_ROOT}/.venv"
 VLLM_SPEC="${VLLM_SPEC:-vllm==0.19.1}"
 TRANSFORMERS_SPEC="${TRANSFORMERS_SPEC:-transformers>=4.56,<5.0}"
+VLLM_FACTORY_GIT_URL="${VLLM_FACTORY_GIT_URL:-https://github.com/Reterno12/vllm-factory.git}"
+VLLM_FACTORY_GIT_REF="${VLLM_FACTORY_GIT_REF:-feat/gliner2-modernbert-plugin}"
+
+if [[ -n "${VLLM_FACTORY_GIT_REF}" ]]; then
+    VLLM_FACTORY_SPEC="vllm-factory[gliner] @ git+${VLLM_FACTORY_GIT_URL}@${VLLM_FACTORY_GIT_REF}"
+else
+    VLLM_FACTORY_SPEC="vllm-factory[gliner] @ git+${VLLM_FACTORY_GIT_URL}"
+fi
 
 if [[ -z "${VIRTUAL_ENV:-}" ]]; then
     echo "=== Creating / using virtualenv: ${VENV_DIR} ==="
@@ -39,8 +49,11 @@ python -m pip install locust pandas python-dotenv
 
 if [ "$NO_VLLM" = false ]; then
     echo ""
-    echo "=== Installing vllm-factory ==="
-    python -m pip install -e "${PROJECT_ROOT}/vllm-factory[gliner]"
+    echo "=== Installing vllm-factory from fork ==="
+    echo "repo: ${VLLM_FACTORY_GIT_URL}"
+    echo "ref:  ${VLLM_FACTORY_GIT_REF}"
+    python -m pip uninstall -y vllm-factory >/dev/null 2>&1 || true
+    python -m pip install --no-cache-dir "${VLLM_FACTORY_SPEC}"
 
     echo ""
     echo "=== Installing experiment dependencies ==="
