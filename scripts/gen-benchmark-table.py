@@ -6,10 +6,30 @@ import glob
 import os
 import sys
 
-RUNTIME_ORDER = ["pytorch", "pytorch-fp16", "onnx-cuda-fp16", "onnx-trt-fp16", "onnx-int8-cpu"]
+RUNTIME_ORDER = [
+    "pytorch-fp16",
+    "onnx-cuda-fp16",
+    "onnx-trt-fp16",
+    "torch-fp16-flash-attn",
+    "torch-fp16-spda",
+    "onnx-cuda-dynamic-int8",
+    "onnx-cuda-static-int8-u20",
+    "pytorch-fp16-flashdeberta",
+    "onnx-int8-cpu",
+]
+
+RUNTIME_ALIASES = {
+    "onnx_cuda_dynamic_int8": "onnx-cuda-dynamic-int8",
+    "pytorch": "pytorch-fp16",
+}
+
+
+def normalize_runtime(runtime: str) -> str:
+    return RUNTIME_ALIASES.get(runtime, runtime)
 
 
 def runtime_key(r):
+    r = normalize_runtime(r)
     try:
         return RUNTIME_ORDER.index(r)
     except ValueError:
@@ -17,8 +37,11 @@ def runtime_key(r):
 
 
 def parse_csv(path: str) -> dict | None:
+    required = {"Name", "Request Count", "Failure Count", "Requests/s", "50%", "95%", "99%"}
     with open(path) as f:
         reader = csv.DictReader(f)
+        if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
+            return None
         for row in reader:
             if row["Name"] == "Aggregated":
                 total = int(row["Request Count"])
@@ -46,9 +69,11 @@ def main():
         parts = rel.replace("\\", "/").split("/")
         if len(parts) == 3:
             serving, model, runtime_file = parts
-            runtime = os.path.splitext(runtime_file)[0]
+            runtime = normalize_runtime(os.path.splitext(runtime_file)[0])
         else:
-            serving, model, runtime = "-", "-", os.path.splitext(os.path.basename(path))[0]
+            serving, model, runtime = "-", "-", normalize_runtime(
+                os.path.splitext(os.path.basename(path))[0]
+            )
         stats = parse_csv(path)
         if stats is None:
             continue

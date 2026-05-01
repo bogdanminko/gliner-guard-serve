@@ -17,8 +17,7 @@
 | prompts.csv | 500 | 914 | 4 152 | 2 521 | 2 472 | 702 |
 | responses.csv | 500 | 949 | 4 139 | 2 534 | 2 507 | 737 |
 
-## Benchmarks
-
+## Benchmarks:
 Пайплайн бенчмаркинга, настройка стенда и инструкция по тестированию — [docs/instruction.md](docs/instruction.md).
 
 Таблица обновляется командой: `make bench-readme`
@@ -34,6 +33,7 @@
 | gliner2-multi-v1 | litserve | pytorch-fp16              |    83.7 |     1200 |     2000 |     2400 |    12.95 |
 |                  |          | onnx-cuda-fp16            |    90.8 |     1000 |     1700 |     2100 |     0.00 |
 |                  |          | onnx-trt-fp16             |   122.6 |      740 |     1200 |     1400 |     0.00 |
-|                  |          | onnx-cuda-int8            |     1.5 |    60000 |    60000 |    60000 |    99.63 |
+|                  |          | onnx-cuda-dynamic-int8    |     1.5 |    60000 |    60000 |    60000 |    99.63 |
+|                  |          | onnx-cuda-static-int8-u20 |     0.3 |    60000 |    60000 |    60000 |   100.00 |
 |                  |          | pytorch-fp16-flashdeberta |   105.7 |      950 |     1400 |     1700 |     0.00 |
 <!-- BENCH:END -->

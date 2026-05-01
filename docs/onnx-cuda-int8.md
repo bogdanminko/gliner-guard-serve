@@ -1,6 +1,6 @@
-# ONNX CUDA INT8 (локальный бандл)
+# ONNX CUDA INT8 (локальный бандл, dynamic)
 
-Инференс `gliner2-multi-v1` через LitServe с ONNX Runtime (CUDA EP) и INT8-моделью, экспортированной локально.
+Инференс `gliner2-multi-v1` через LitServe с ONNX Runtime (CUDA EP) и INT8-моделью, экспортированной локально (в т.ч. путь `QUANTIZE=int8` в `gliner2-onnx`). Отдельный эксперимент со **static** QDQ — [onnx-cuda-static-int8.md](onnx-cuda-static-int8.md).
 
 ## Особенности
 
