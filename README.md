@@ -22,6 +22,7 @@
 Пайплайн бенчмаркинга, настройка стенда и инструкция по тестированию — [docs/instruction.md](docs/instruction.md).
 Итоговый sweep по dynamic batching на Runpod A100 сохранён в [docs/ray-serve-sweep-2026-04-18-final.md](docs/ray-serve-sweep-2026-04-18-final.md).
 Актуальный Ray Serve A100 4-worker UNI REST/gRPC evidence pack — [docs/a100-ray-serve-uni-results-2026-04-29.md](docs/a100-ray-serve-uni-results-2026-04-29.md);
+raw artifacts лежат в `artifacts/benchmarks/a100-sxm4-80gb/ray-serve-uni-4worker-2026-04-29/`;
 воспроизводимая конфигурация — [docs/ray-serve-a100-4worker-config.md](docs/ray-serve-a100-4worker-config.md).
 
 Таблица обновляется командой: `make bench-readme`

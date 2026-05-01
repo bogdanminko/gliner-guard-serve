@@ -24,7 +24,7 @@ available. The runner used the Ray-only path documented in
 Full copied result directory:
 
 ```text
-results-runpod/nvidia-a100-sxm4-80gb/ray-serve-uni-a100-full-20260429T104754Z
+artifacts/benchmarks/a100-sxm4-80gb/ray-serve-uni-4worker-2026-04-29
 ```
 
 Original VM result directory:

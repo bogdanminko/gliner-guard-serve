@@ -93,6 +93,12 @@ writes each benchmark into an isolated timestamped directory. On Runpod, the
 default result path is `/workspace/gliner-guard-results/a100-baremetal-*`; on
 local machines it is `results-runpod/a100-baremetal-*`.
 
+Committed PR evidence should be moved out of the local dump path and into:
+
+```text
+artifacts/benchmarks/a100-sxm4-80gb/<descriptive-run-name>/
+```
+
 If the Runpod `/workspace` volume returns `Stale file handle` while installing
 Python wheels, keep the checked-out code and `.venv` on the root disk, for
 example `/root/gliner-guard-serve`, while leaving `HF_HOME` and `RESULT_DIR`
