@@ -764,6 +764,32 @@ python -m locust \
 
 ---
 
+## Сводка по фактическим результатам
+
+<!-- AUTO_VLLM_RESULTS:START -->
+
+Источник: `results/vllm/gliner_guard_v4-final`
+
+| Experiment | RPS | P50 (ms) | P95 (ms) | P99 (ms) | Err rate (%) |
+|---|---:|---:|---:|---:|---:|
+| baseline-len8192-tokens262k | 180.4 | 450 | 890 | 1000 | 0.00 |
+| len4096-tokens131k | 152.8 | 480 | 920 | 3900 | 0.00 |
+| len2048-tokens131k | 180.8 | 470 | 800 | 1000 | 0.00 |
+| len4096-tokens65k | 179.9 | 460 | 870 | 1000 | 0.00 |
+| len2048-tokens65k | 179.0 | **430** | 990 | 1100 | 0.00 |
+| len2048-tokens49k | **181.4** | 440 | 910 | 1000 | 0.00 |
+| best-no-chunked-prefill-len2048-tokens131k | 162.9 | 600 | 710 | 910 | 0.00 |
+| best-enforce-eager-len2048-tokens131k | 162.2 | 600 | **700** | **880** | 0.00 |
+
+Короткий вывод:
+- лучший throughput: `len2048-tokens49k`
+- лучший p95: `best-enforce-eager-len2048-tokens131k`
+- конфиги с failures: нет
+
+<!-- AUTO_VLLM_RESULTS:END -->
+
+---
+
 ## Что сохранять после каждого прогона
 
 Минимум:

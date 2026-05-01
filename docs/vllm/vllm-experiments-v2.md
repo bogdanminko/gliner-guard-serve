@@ -316,6 +316,27 @@ results/vllm/gliner-guard-uni/
 └── ...
 ```
 
+### Автосводка по фактическим результатам
+
+<!-- AUTO_VLLM_RESULTS:START -->
+
+Источник: `results/vllm/gliner-guard_v2`
+
+| Experiment | RPS | P50 (ms) | P95 (ms) | P99 (ms) | Err rate (%) |
+|---|---:|---:|---:|---:|---:|
+| sched-safe | 89.5 | 1000 | 1400 | 1500 | 0.00 |
+| sched-balanced | 61.9 | 1700 | 1800 | 1900 | 0.00 |
+| sched-aggressive | 60.9 | 1700 | 1800 | 2000 | 0.00 |
+| sched-short | 62.8 | 1600 | 1800 | 1900 | 0.00 |
+| multi-4x | **124.9** | **800** | **880** | **930** | 0.00 |
+
+Короткий вывод:
+- лучший throughput: `multi-4x`
+- лучший p95: `multi-4x`
+- конфиги с failures: нет
+
+<!-- AUTO_VLLM_RESULTS:END -->
+
 ### Скачать на локальную машину
 
 ```bash

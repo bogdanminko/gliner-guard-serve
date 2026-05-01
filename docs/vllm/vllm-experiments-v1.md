@@ -516,6 +516,30 @@ python -m locust \
 
 ---
 
+## Сводка по фактическим результатам
+
+<!-- AUTO_VLLM_RESULTS:START -->
+
+Источник: `results/vllm/gliner-guard_v1`
+
+| Experiment | RPS | P50 (ms) | P95 (ms) | P99 (ms) | Err rate (%) |
+|---|---:|---:|---:|---:|---:|
+| bfloat16-eager | 107.6 | 870 | 1100 | **1100** | 0.00 |
+| float16-eager | 105.5 | 900 | 1100 | **1100** | 0.00 |
+| bfloat16-cudagraph | 106.8 | 880 | 1100 | **1100** | 0.00 |
+| float16-cudagraph | **108.6** | **860** | 1100 | **1100** | 0.00 |
+| bfloat16-eager-batch16k | 88.6 | 1100 | 1200 | 1200 | 0.00 |
+| bfloat16-eager-mem90 | 108.3 | 870 | **1000** | **1100** | 0.00 |
+
+Короткий вывод:
+- лучший throughput: `float16-cudagraph`
+- лучший p95: `bfloat16-eager-mem90`
+- конфиги с failures: нет
+
+<!-- AUTO_VLLM_RESULTS:END -->
+
+---
+
 ## Что сохранять после каждого прогона
 
 Минимум:
